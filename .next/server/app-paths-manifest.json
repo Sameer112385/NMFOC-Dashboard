@@ -1,0 +1,6 @@
+{
+  "/api/financial-sources/recalculate/route": "app/api/financial-sources/recalculate/route.js",
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/(app)/projects/page": "app/(app)/projects/page.js",
+  "/(app)/projects/[projectId]/page": "app/(app)/projects/[projectId]/page.js"
+}

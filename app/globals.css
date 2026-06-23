@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --color-bg: 7 17 31;
+  --color-panel: 13 26 43;
+  --color-panel-2: 18 35 58;
+  --color-line: 34 54 80;
+  --color-text: 229 238 252;
+  --color-muted: 142 163 191;
+  --color-accent: 67 198 184;
+  --color-warning: 234 179 8;
+  --color-danger: 239 68 68;
+  --color-success: 34 197 94;
+  --page-bg:
+    radial-gradient(circle at top left, rgba(67, 198, 184, 0.14), transparent 30%),
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.12), transparent 32%),
+    rgb(var(--color-bg));
+  --glass-bg: rgba(13, 26, 43, 0.72);
+  --glass-border: rgba(142, 163, 191, 0.15);
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+  --color-bg: 244 247 251;
+  --color-panel: 255 255 255;
+  --color-panel-2: 233 240 249;
+  --color-line: 197 210 226;
+  --color-text: 16 24 40;
+  --color-muted: 88 104 127;
+  --color-accent: 21 163 151;
+  --color-warning: 180 117 0;
+  --color-danger: 196 51 51;
+  --color-success: 21 128 61;
+  --page-bg:
+    radial-gradient(circle at top left, rgba(21, 163, 151, 0.16), transparent 30%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 32%),
+    linear-gradient(180deg, rgb(244, 247, 251), rgb(235, 242, 250));
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(148, 163, 184, 0.22);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--page-bg);
+  color: rgb(var(--color-text));
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.glass,
+.surface-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  box-shadow: 0 12px 30px rgba(2, 8, 23, 0.16);
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(142, 163, 191, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(142, 163, 191, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+html[data-theme='light'] .bg-white\/5 {
+  background-color: rgb(var(--color-panel) / 0.82) !important;
+}
+
+html[data-theme='light'] .bg-white\/10 {
+  background-color: rgb(var(--color-panel-2) / 0.86) !important;
+}
+
+html[data-theme='light'] .bg-black\/10,
+html[data-theme='light'] .bg-black\/15 {
+  background-color: rgb(var(--color-panel) / 0.7) !important;
+}
+
+html[data-theme='light'] .bg-black\/60,
+html[data-theme='light'] .bg-black\/80 {
+  background-color: rgb(var(--color-panel-2) / 0.92) !important;
+}
+
+html[data-theme='light'] .border-white\/5,
+html[data-theme='light'] .border-white\/10 {
+  border-color: rgb(var(--color-line) / 0.75) !important;
+}
+
+html[data-theme='light'] .hover\:bg-white\/5:hover {
+  background-color: rgb(var(--color-panel-2) / 0.8) !important;
+}
+
+html[data-theme='light'] .hover\:bg-white\/10:hover {
+  background-color: rgb(var(--color-panel-2) / 0.9) !important;
+}
+
+html[data-theme='light'] .hover\:bg-black\/60:hover,
+html[data-theme='light'] .hover\:bg-black\/80:hover {
+  background-color: rgb(var(--color-panel-2) / 0.95) !important;
+}

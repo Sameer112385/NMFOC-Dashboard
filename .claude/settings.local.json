@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"D:\\\\Antigravity\\\\NMFOC Dashboard\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(node node-v24.16.0-win-x64/npx.cmd next build)"
+    ]
+  }
+}
