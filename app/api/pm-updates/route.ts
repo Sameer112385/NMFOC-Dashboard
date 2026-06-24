@@ -6,8 +6,9 @@ import { isLocalDbMode, savePmUpdate, updatePmUpdatePostingStatus } from '@/lib/
 import type { PMManpowerLine, PMMaterialLine, PMSubcontractLine } from '@/lib/types';
 import { buildRiskAlerts, createSnapshot } from '@/lib/calculations';
 import { buildFinancialRowsFromSources } from '@/lib/financial-engine';
-import { truncateFinancialOutput } from '@/lib/financial-format';
 import { fetchAllSupabaseRows } from '@/lib/supabase/pagination';
+import { deletePmUpdate } from '@/lib/data';
+import { truncateFinancialOutput } from '@/lib/financial-format';
 
 export async function POST(request: Request) {
   const formData = await request.formData();
@@ -431,3 +432,43 @@ function normalizeNullableText(value: unknown) {
   const text = String(value ?? '').trim();
   return text ? text : null;
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const payload = await request.json();
+    const id = String(payload.id ?? '').trim();
+    if (!id) {
+      return NextResponse.json({ error: 'PM update id is required.' }, { status: 400 });
+    }
+    
+    // Fetch PM update first to get project_id so we can recalculate after delete
+    let projectId = '';
+    if (await isLocalDbMode()) {
+      const updates = await import('@/lib/local-db').then((m) => m.readDailyUpdates());
+      const item = updates.find((u: any) => u.id === id);
+      if (item) projectId = item.project_id;
+    } else {
+      const supabase = await createSupabaseServerClient();
+      const { data } = await supabase.from('pm_daily_updates').select('project_id').eq('id', id).maybeSingle();
+      if (data) projectId = data.project_id;
+    }
+
+    await deletePmUpdate(id);
+
+    // Rebuild calculations for that project
+    if (projectId) {
+      if (!(await isLocalDbMode())) {
+        const supabase = await createSupabaseServerClient();
+        await refreshProjectFinancialOutputs(supabase, projectId);
+      }
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unable to delete PM update.' },
+      { status: 500 },
+    );
+  }
+}
+

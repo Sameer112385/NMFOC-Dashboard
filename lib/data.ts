@@ -22,6 +22,10 @@ import {
   readProjectWbsMaster as readLocalProjectWbsMaster,
   readProjects as readLocalProjects,
   readRevenueRows as readLocalRevenueRows,
+  updateLocalProjectMaterialMaster,
+  updateLocalProjectManpowerRate,
+  deleteLocalPmUpdate,
+  updateLocalPmUpdate,
   readRiskAlerts as readLocalRiskAlerts,
   readSalesOrderRows as readLocalSalesOrderRows,
   readGr55Rows as readLocalGr55Rows,
@@ -33,6 +37,7 @@ import {
 } from '@/lib/local-db';
 import type {
   DailyUpdate,
+  Gr55CostRow,
   Project,
   ProjectManpowerRate,
   ProjectMaterialMaster,
@@ -181,9 +186,32 @@ export async function getSalesOrderRevenueRows(projectId?: string): Promise<Sale
   if (await isLocalDbMode()) return readLocalSalesOrderRows(projectId);
   try {
     const supabase = await createSupabaseServerClient();
+    
+    let uploadId: string | null = null;
+    if (projectId) {
+      const { data: latestUpload } = await supabase
+        .from('sales_order_uploads')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('is_latest', true)
+        .order('upload_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestUpload) {
+        uploadId = latestUpload.id;
+      } else {
+        return []; // No uploads found
+      }
+    }
+
     const data = await fetchAllSupabaseRows<SalesOrderRevenueRow>(() => {
       let query = supabase.from('sales_order_rows').select('*').order('wbs_code', { ascending: true });
-      if (projectId) query = query.eq('project_id', projectId);
+      if (projectId) {
+        query = query.eq('project_id', projectId);
+        if (uploadId) {
+          query = query.eq('upload_id', uploadId);
+        }
+      }
       return query;
     });
     if (data.length) return data;
@@ -211,6 +239,50 @@ export async function getDailyUpdates(projectId?: string): Promise<DailyUpdate[]
     // ignore and return empty
   }
   return [];
+}
+
+export async function getGr55Rows(projectId?: string): Promise<Gr55CostRow[]> {
+  if (await isLocalDbMode()) return readLocalGr55Rows(projectId);
+  try {
+    const supabase = await createSupabaseServerClient();
+    
+    let uploadId: string | null = null;
+    if (projectId) {
+      const { data: latestUpload } = await supabase
+        .from('gr55_uploads')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('is_latest', true)
+        .order('upload_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestUpload) {
+        uploadId = latestUpload.id;
+      } else {
+        return []; // No uploads found
+      }
+    }
+
+    const data = await fetchAllSupabaseRows<any>(() => {
+      let query = supabase
+        .from('gr55_rows')
+        .select('posting_date, wbs_code, cost_category, cost_element, purchasing_document, amount')
+        .order('posting_date', { ascending: true });
+      if (projectId) {
+        query = query.eq('project_id', projectId);
+        if (uploadId) {
+          query = query.eq('upload_id', uploadId);
+        }
+      }
+      return query;
+    });
+    return data.map((row: any) => ({
+      ...row,
+      raw_data_json: {},
+    })) as Gr55CostRow[];
+  } catch {
+    return [];
+  }
 }
 
 export async function getProjectManpowerRates(projectId?: string): Promise<ProjectManpowerRate[]> {
@@ -875,7 +947,7 @@ function filterRevenueGeneratingRows(rows: RevenueWBS[], masterRows: ProjectWbsM
 
   return rows.filter((row) => {
     const code = normalizeWbsHierarchyCode(row.wbs_code);
-    return revenueCodes.has(code) || safeNumber(row.planned_revenue) !== 0;
+    return revenueCodes.has(code);
   });
 }
 
@@ -941,3 +1013,66 @@ export async function deleteProjectMaterialMaster(id: string) {
   const { error } = await supabase.from('project_material_master').delete().eq('id', id);
   if (error) throw error;
 }
+
+export async function updateProjectMaterialMaster(id: string, patch: Partial<Omit<ProjectMaterialMaster, 'id' | 'created_at'>>) {
+  if (await isLocalDbMode()) return updateLocalProjectMaterialMaster(id, patch);
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('project_material_master')
+    .update({
+      revenue_wbs_code: patch.revenue_wbs_code,
+      material_code: patch.material_code,
+      material_description: patch.material_description,
+      unit_of_measure: patch.unit_of_measure ?? null,
+      planned_quantity: patch.planned_quantity,
+      unit_price: patch.unit_price,
+      is_active: patch.is_active,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ProjectMaterialMaster;
+}
+
+export async function updateProjectManpowerRate(id: string, patch: Partial<Omit<ProjectManpowerRate, 'id' | 'created_at'>>) {
+  if (await isLocalDbMode()) return updateLocalProjectManpowerRate(id, patch);
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('project_manpower_rates')
+    .update({
+      revenue_wbs_code: patch.revenue_wbs_code,
+      work_center: patch.work_center ?? null,
+      cost_center: patch.cost_center ?? null,
+      labor_category: patch.labor_category,
+      hourly_rate: patch.hourly_rate,
+      is_active: patch.is_active,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ProjectManpowerRate;
+}
+
+export async function deletePmUpdate(id: string) {
+  if (await isLocalDbMode()) return deleteLocalPmUpdate(id);
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from('pm_daily_updates').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function updatePmUpdate(id: string, patch: Partial<DailyUpdate>) {
+  if (await isLocalDbMode()) return updateLocalPmUpdate(id, patch);
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('pm_daily_updates')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as DailyUpdate;
+}
+
+

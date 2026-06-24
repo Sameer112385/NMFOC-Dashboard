@@ -108,7 +108,7 @@ export function PMUpdateForm({
       setMessage(payload.error ?? 'Unable to submit PM update.');
       return;
     }
-    setMessage(payload.warning ? String(payload.warning) : 'PM daily update saved.');
+    setMessage(payload.warning ? String(payload.warning) : 'PM daily update saved successfully.');
     setSubcontractLines([createSubcontractLine()]);
     setManpowerLines([createManpowerLine()]);
     setMaterialLines([createMaterialLine()]);
@@ -116,17 +116,17 @@ export function PMUpdateForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`space-y-5 p-5 ${surfaceCard}`}>
+    <form onSubmit={handleSubmit} className={`space-y-6 p-6 border border-line/40 bg-panel/30 shadow-card ${surfaceCard}`}>
       <div>
-        <h3 className="text-lg font-semibold text-text">PM Daily Update</h3>
-        <p className="mt-1 text-sm text-muted">
-          Capture one daily header, then split the pending posting into subcontractor lines, manpower hours, and material usage.
+        <h3 className="text-base font-bold text-text">PM Daily Operations Entry</h3>
+        <p className="mt-1 text-xs text-muted/80 font-medium">
+          Submit daily work progress alongside simulated subcontractor, manpower, and material costs.
         </p>
       </div>
 
       <section className="space-y-3">
-        <div className="text-sm font-medium text-text">Header</div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="text-xs font-bold uppercase tracking-wider text-muted/95">Daily Header Info</div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <DarkSelect
             value={projectId}
             onChange={setProjectId}
@@ -146,20 +146,20 @@ export function PMUpdateForm({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-line/70 bg-panel/40 p-4">
-        <div className="flex items-center justify-between gap-3">
+      <section className="rounded-xl border border-line bg-panel/40 p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3 border-b border-line/35 pb-2">
           <div>
-            <div className="text-sm font-semibold text-text">Subcontractor</div>
-            <div className="text-xs text-muted">PM selects the maintained project PO package, then enters only the progress amount for that posting.</div>
+            <div className="text-xs font-bold text-text">Subcontractor Accruals</div>
+            <div className="text-[10px] text-muted font-medium">Select a project subcontract PO, then enter the current simulated amount.</div>
           </div>
           <button type="button" onClick={() => setSubcontractLines((items) => [...items, createSubcontractLine()])} className={secondaryButtonClass}>
-            Add line
+            Add Line
           </button>
         </div>
-        {!projectSubcontractOptions.length ? <div className="mt-3 text-xs text-warning">No project subcontract package found for this project. Add package and PO details first in Project Details.</div> : null}
-        <div className="mt-4 space-y-3">
+        {!projectSubcontractOptions.length ? <div className="mt-1 text-[11px] font-medium text-warning">No subcontract packages defined. Maintain subcontracts in Project Details.</div> : null}
+        <div className="space-y-3">
           {subcontractLines.map((line) => (
-            <div key={line.id} className="grid gap-3 xl:grid-cols-[1.4fr,0.9fr,0.9fr,0.8fr,0.8fr,44px]">
+            <div key={line.id} className="grid gap-3 items-center xl:grid-cols-[1.4fr,0.9fr,0.9fr,0.8fr,0.8fr,36px]">
               <DarkSelect
                 value={line.project_subcontract_id ?? ''}
                 onChange={(value) => selectSubcontractMaster(setSubcontractLines, line.id, value, projectSubcontractOptions)}
@@ -169,9 +169,9 @@ export function PMUpdateForm({
                 }))}
                 placeholder="Select project PO"
               />
-              <div className={`${inputClass} flex items-center text-muted`}>{line.package_name || 'Package'}</div>
-              <div className={`${inputClass} flex items-center text-muted`}>{line.subcontractor_name || 'Vendor'}</div>
-              <div className={`${inputClass} flex items-center text-muted`}>{line.coc_reference || 'PO number'}</div>
+              <div className={`${inputClass} flex items-center text-muted truncate h-9 bg-panel/30`}>{line.package_name || 'Package'}</div>
+              <div className={`${inputClass} flex items-center text-muted truncate h-9 bg-panel/30`}>{line.subcontractor_name || 'Vendor'}</div>
+              <div className={`${inputClass} flex items-center text-muted truncate h-9 bg-panel/30`}>{line.coc_reference || 'PO number'}</div>
               <input
                 value={line.amount || ''}
                 onChange={(e) => setSubcontractLines((items) => items.map((item) => item.id === line.id ? { ...item, amount: Number(e.target.value || 0) } : item))}
@@ -181,27 +181,27 @@ export function PMUpdateForm({
                 className={inputClass}
               />
               <button type="button" onClick={() => setSubcontractLines((items) => removeLine(items, line.id, createSubcontractLine()))} className={iconButtonClass}>
-                x
+                &times;
               </button>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-2xl border border-line/70 bg-panel/40 p-4">
-        <div className="flex items-center justify-between gap-3">
+      <section className="rounded-xl border border-line bg-panel/40 p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3 border-b border-line/35 pb-2">
           <div>
-            <div className="text-sm font-semibold text-text">Manpower</div>
-            <div className="text-xs text-muted">PM shares worked hours against the selected revenue WBS. Amount is calculated automatically from the WBS-linked manpower rate master.</div>
+            <div className="text-xs font-bold text-text">Manpower Hours</div>
+            <div className="text-[10px] text-muted font-medium">Record hours worked on this WBS. Cost is calculated from the manpower rate master.</div>
           </div>
           <button type="button" onClick={() => setManpowerLines((items) => [...items, createManpowerLine()])} className={secondaryButtonClass}>
-            Add line
+            Add Line
           </button>
         </div>
-        {!projectRateOptions.length ? <div className="mt-3 text-xs text-warning">No manpower rate master found for this project. Add manpower rates first in Project Masters.</div> : null}
-        <div className="mt-4 space-y-3">
+        {!projectRateOptions.length ? <div className="mt-1 text-[11px] font-medium text-warning">No manpower rates defined. Maintain manpower rates in Project setup.</div> : null}
+        <div className="space-y-3">
           {manpowerLines.map((line) => (
-            <div key={line.id} className="grid gap-3 xl:grid-cols-[1.5fr,1fr,0.75fr,0.75fr,0.75fr,0.75fr,0.85fr,44px]">
+            <div key={line.id} className="grid gap-3 items-center xl:grid-cols-[1.5fr,1fr,0.75fr,0.75fr,0.75fr,0.75fr,0.85fr,36px]">
               <DarkSelect
                 value={line.master_id ?? ''}
                 onChange={(value) => selectManpowerMaster(setManpowerLines, line.id, value, projectRateOptions, selectedWbs?.wbs_code ?? '')}
@@ -211,7 +211,7 @@ export function PMUpdateForm({
                 }))}
                 placeholder="Select manpower rate"
               />
-              <div className={`${inputClass} flex items-center text-muted truncate`}>{line.revenue_wbs_code || 'Revenue WBS'}</div>
+              <div className={`${inputClass} flex items-center text-muted truncate h-9 bg-panel/30`}>{line.revenue_wbs_code || 'Revenue WBS'}</div>
               <input
                 value={line.hours_worked || ''}
                 onChange={(e) => updateManpowerLine(setManpowerLines, line.id, { hours_worked: Number(e.target.value || 0) })}
@@ -220,32 +220,32 @@ export function PMUpdateForm({
                 placeholder="Hours"
                 className={inputClass}
               />
-              <div className={`${inputClass} flex items-center text-muted truncate`}>{line.work_center || 'Work center'}</div>
-              <div className={`${inputClass} flex items-center text-muted truncate`}>{line.cost_center || 'Cost center'}</div>
-              <div className={`${inputClass} flex items-center justify-end font-medium text-text`}>{formatCurrency(line.hourly_rate)}</div>
-              <div className={`${inputClass} flex items-center justify-end font-medium text-text`}>{formatCurrency(line.amount)}</div>
+              <div className={`${inputClass} flex items-center text-muted truncate h-9 bg-panel/30`}>{line.work_center || 'Work center'}</div>
+              <div className={`${inputClass} flex items-center text-muted truncate h-9 bg-panel/30`}>{line.cost_center || 'Cost center'}</div>
+              <div className={`${inputClass} flex items-center justify-end font-bold text-text h-9 bg-panel/30`}>{formatCurrency(line.hourly_rate)}</div>
+              <div className={`${inputClass} flex items-center justify-end font-extrabold text-accent h-9 bg-panel/30`}>{formatCurrency(line.amount)}</div>
               <button type="button" onClick={() => setManpowerLines((items) => removeLine(items, line.id, createManpowerLine()))} className={iconButtonClass}>
-                x
+                &times;
               </button>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-2xl border border-line/70 bg-panel/40 p-4">
-        <div className="flex items-center justify-between gap-3">
+      <section className="rounded-xl border border-line bg-panel/40 p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3 border-b border-line/35 pb-2">
           <div>
-            <div className="text-sm font-semibold text-text">Material</div>
-            <div className="text-xs text-muted">PM selects from the planned project material master for this revenue WBS. Cost is calculated from quantity multiplied by the maintained unit price.</div>
+            <div className="text-xs font-bold text-text">Material Consumption</div>
+            <div className="text-[10px] text-muted font-medium">Record materials utilized on this WBS. Cost is calculated from the unit prices.</div>
           </div>
           <button type="button" onClick={() => setMaterialLines((items) => [...items, createMaterialLine()])} className={secondaryButtonClass}>
-            Add line
+            Add Line
           </button>
         </div>
-        {!projectMaterialOptions.length ? <div className="mt-3 text-xs text-warning">No project material master found for this project and WBS. Add materials first in Settings.</div> : null}
-        <div className="mt-4 space-y-3">
+        {!projectMaterialOptions.length ? <div className="mt-1 text-[11px] font-medium text-warning">No materials defined. Maintain material master in Project setup.</div> : null}
+        <div className="space-y-3">
           {materialLines.map((line) => (
-            <div key={line.id} className="grid gap-3 xl:grid-cols-[1.5fr,1.2fr,0.6fr,0.7fr,0.8fr,0.9fr,44px]">
+            <div key={line.id} className="grid gap-3 items-center xl:grid-cols-[1.5fr,1.2fr,0.6fr,0.7fr,0.8fr,0.9fr,36px]">
               <DarkSelect
                 value={line.master_id ?? ''}
                 onChange={(value) => selectMaterialMaster(setMaterialLines, line.id, value, projectMaterialOptions)}
@@ -255,8 +255,8 @@ export function PMUpdateForm({
                 }))}
                 placeholder="Select planned material"
               />
-              <div className={`${inputClass} flex items-center text-muted`}>{line.material_description || 'Description'}</div>
-              <div className={`${inputClass} flex items-center text-muted`}>{line.unit_of_measure || 'UoM'}</div>
+              <div className={`${inputClass} flex items-center text-muted truncate h-9 bg-panel/30`}>{line.material_description || 'Description'}</div>
+              <div className={`${inputClass} flex items-center text-muted truncate h-9 bg-panel/30`}>{line.unit_of_measure || 'UoM'}</div>
               <input
                 value={line.quantity || ''}
                 onChange={(e) => updateMaterialLine(setMaterialLines, line.id, { quantity: Number(e.target.value || 0) })}
@@ -265,39 +265,43 @@ export function PMUpdateForm({
                 placeholder="Qty"
                 className={inputClass}
               />
-              <div className={`${inputClass} flex items-center justify-end font-medium text-text`}>{formatCurrency(line.unit_price)}</div>
-              <div className={`${inputClass} flex items-center justify-end font-medium text-text`}>{formatCurrency(line.amount)}</div>
+              <div className={`${inputClass} flex items-center justify-end font-bold text-text h-9 bg-panel/30`}>{formatCurrency(line.unit_price)}</div>
+              <div className={`${inputClass} flex items-center justify-end font-extrabold text-accent h-9 bg-panel/30`}>{formatCurrency(line.amount)}</div>
               <button type="button" onClick={() => setMaterialLines((items) => removeLine(items, line.id, createMaterialLine()))} className={iconButtonClass}>
-                x
+                &times;
               </button>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Subcontractor total" value={subcontractTotal} />
-        <SummaryCard label="Manpower total" value={manpowerTotal} />
-        <SummaryCard label="Material total" value={materialTotal} />
-        <SummaryCard label="Total pending cost" value={totalPendingCost} emphasize />
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SummaryCard label="Subcontractor Total" value={subcontractTotal} />
+        <SummaryCard label="Manpower Total" value={manpowerTotal} />
+        <SummaryCard label="Material Total" value={materialTotal} />
+        <SummaryCard label="Total Pending Cost" value={totalPendingCost} emphasize />
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2">
-        <textarea name="issue_delay" placeholder="Issue / Delay" className="min-h-24 rounded-xl border border-line/70 bg-panel/70 px-4 py-3 text-sm text-text" />
-        <textarea name="remarks" placeholder="Remarks" className="min-h-24 rounded-xl border border-line/70 bg-panel/70 px-4 py-3 text-sm text-text" />
-        <select name="approval_status" defaultValue="Pending" className={inputClass}>
-          <option value="Pending">Pending</option>
-          <option value="Approved">Approved</option>
-          <option value="Rejected">Rejected</option>
+      <section className="grid gap-4 sm:grid-cols-2">
+        <textarea name="issue_delay" placeholder="Operational issues or delay notes..." className="min-h-[100px] rounded-lg border border-line bg-panel px-4 py-3 text-xs text-text outline-none focus:border-accent shadow-sm" />
+        <textarea name="remarks" placeholder="General remarks..." className="min-h-[100px] rounded-lg border border-line bg-panel px-4 py-3 text-xs text-text outline-none focus:border-accent shadow-sm" />
+        <select name="approval_status" defaultValue="Pending" className={`${inputClass} font-semibold cursor-pointer`}>
+          <option value="Pending">Approval Status: Pending</option>
+          <option value="Approved">Approval Status: Approved</option>
+          <option value="Rejected">Approval Status: Rejected</option>
         </select>
-        <input name="submitted_by" placeholder="Submitted by" className={inputClass} />
+        <input name="submitted_by" placeholder="Submitted by (Username/Email)" className={inputClass} />
       </section>
 
-      <div className="flex items-center gap-3">
-        <button disabled={loading || !projectId || !revenueWbsId} className="rounded-xl bg-accent px-4 py-3 text-sm font-medium text-bg disabled:opacity-60">
-          {loading ? 'Saving...' : 'Submit update'}
+      <div className="flex items-center gap-3 pt-3 border-t border-line/35">
+        <button disabled={loading || !projectId || !revenueWbsId} className="rounded-lg bg-accent px-5 py-3 text-xs font-bold text-white hover:opacity-90 transition disabled:opacity-60 shadow-sm">
+          {loading ? 'Submitting...' : 'Submit Operation Update'}
         </button>
-        {message ? <span className="text-sm text-muted">{message}</span> : null}
+        {message ? (
+          <span className="text-xs font-bold text-accent bg-accent/5 border border-accent/15 px-3 py-2 rounded-md">
+            {message}
+          </span>
+        ) : null}
       </div>
     </form>
   );
@@ -305,16 +309,16 @@ export function PMUpdateForm({
 
 function SummaryCard({ label, value, emphasize = false }: { label: string; value: number; emphasize?: boolean }) {
   return (
-    <div className={`rounded-2xl border px-4 py-3 ${emphasize ? 'border-accent/40 bg-accent/10' : 'border-line/70 bg-panel/40'}`}>
-      <div className="text-[11px] uppercase tracking-[0.12em] text-muted">{label}</div>
-      <div className="mt-2 text-lg font-semibold text-text">{formatCurrency(value)}</div>
+    <div className={`rounded-xl border p-4 shadow-sm transition-all ${emphasize ? 'border-accent/30 bg-accent/5 shadow-md' : 'border-line/70 bg-panel/50'}`}>
+      <div className="section-kicker text-muted/70 font-semibold tracking-wider">{label}</div>
+      <div className="mt-2.5 data-value text-right text-base font-extrabold text-text">{formatCurrency(value)}</div>
     </div>
   );
 }
 
-const inputClass = 'rounded-xl border border-line/70 bg-panel/70 px-4 py-3 text-sm text-text';
-const secondaryButtonClass = 'rounded-xl border border-line/70 px-3 py-2 text-xs font-medium text-text hover:bg-panel2/80';
-const iconButtonClass = 'rounded-xl border border-line/70 px-3 py-2 text-xs font-medium text-text hover:bg-panel2/80';
+const inputClass = 'rounded-lg border border-line bg-panel px-3 py-2 text-xs text-text outline-none focus:border-accent focus:ring-1 focus:ring-accent transition shadow-sm w-full';
+const secondaryButtonClass = 'rounded-lg border border-line bg-panel px-3.5 py-1.5 text-[10px] font-bold text-text hover:bg-panel2 transition shadow-sm';
+const iconButtonClass = 'rounded-lg border border-danger/30 bg-danger/5 px-2 py-1.5 text-xs font-bold text-danger hover:bg-danger hover:text-white transition w-9 h-9 flex items-center justify-center shrink-0';
 
 function createSubcontractLine(): PMSubcontractLine {
   return { id: crypto.randomUUID(), project_subcontract_id: '', package_name: '', subcontractor_name: '', coc_reference: '', amount: 0, remarks: '' };
@@ -369,6 +373,7 @@ function updateManpowerLine(
   );
 }
 
+// Update material lines quantity / totals
 function updateMaterialLine(
   setLines: Dispatch<SetStateAction<PMMaterialLine[]>>,
   id: string,
@@ -471,3 +476,4 @@ function compactManpowerLines(lines: PMManpowerLine[]) {
 function compactMaterialLines(lines: PMMaterialLine[]) {
   return lines.filter((line) => (line.master_id ?? '').trim() || Number(line.quantity || 0) > 0 || Number(line.amount || 0) > 0);
 }
+

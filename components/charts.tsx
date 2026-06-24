@@ -19,17 +19,16 @@ import {
 import { cn, formatCompactCurrency, formatCompactNumber, formatPercent } from '@/lib/utils';
 import { surfaceCard } from '@/components/ui';
 
-const palette = ['#43c6b8', '#60a5fa', '#f59e0b', '#ef4444', '#a78bfa', '#22c55e'];
+const palette = ['#3b82f6', '#10b981', '#6366f1', '#f59e0b', '#ec4899', '#14b8a6'];
 
 const chartTooltipStyle = {
-  backgroundColor: 'rgb(var(--color-panel) / 0.96)',
-  border: '1px solid rgb(var(--color-line) / 0.9)',
-  borderRadius: 12,
+  backgroundColor: 'rgb(var(--color-panel) / 0.95)',
+  border: '1px solid rgb(var(--color-line) / 0.7)',
+  borderRadius: 10,
   color: 'rgb(var(--color-text))',
-};
-
-const chartLegendStyle = {
-  color: 'rgb(var(--color-text))',
+  boxShadow: 'var(--shadow-panel)',
+  fontSize: '11px',
+  fontFamily: 'Inter, sans-serif',
 };
 
 function chartAxisTickFormatter(value: number | string) {
@@ -44,49 +43,84 @@ function chartTooltipFormatter(value: number, name: string) {
   return [formatCompactCurrency(value), name];
 }
 
-function wrapChart({ title, className, children }: { title: string; className?: string; children: ReactNode }) {
+function wrapChart({ title, subtitle, className, children }: { title: string; subtitle?: string; className?: string; children: ReactNode }) {
   return (
-    <div className={cn(surfaceCard, 'p-5', className)}>
-      <h3 className="text-base font-semibold tracking-tight text-text">{title}</h3>
-      <div className="mt-4 h-72">{children}</div>
+    <div className={cn(surfaceCard, 'overflow-hidden border border-line/40 bg-panel/30 shadow-card hover:shadow-md hover:border-line/75', className)}>
+      <div className="border-b border-line/30 px-5 py-4">
+        <div className="text-sm font-bold tracking-tight text-text">{title}</div>
+        {subtitle ? <div className="mt-1 text-xs text-muted/75 font-medium">{subtitle}</div> : null}
+      </div>
+      <div className="h-80 p-5">{children}</div>
     </div>
   );
 }
 
 export function RevenueVsSimulationChart({ data }: { data: { name: string; sap: number; simulated: number }[] }) {
+  const chartWidth = Math.max(500, data.length * 45);
   return wrapChart({
     title: 'Recognized Revenue vs Forecast Revenue',
+    subtitle: 'Compare system revenue against the current management projection.',
     children: (
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.35)" />
-          <XAxis dataKey="name" stroke="rgb(var(--color-muted))" />
-          <YAxis stroke="rgb(var(--color-muted))" tickFormatter={chartAxisTickFormatter} />
-          <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} />
-          <Legend />
-          <Bar dataKey="sap" fill="#60a5fa" name="SAP Revenue" />
-          <Bar dataKey="simulated" fill="#43c6b8" name="Simulated Revenue" />
-        </BarChart>
-      </ResponsiveContainer>
+      <div className="h-full overflow-x-auto pb-2 scrollbar-thin">
+        <div style={{ width: chartWidth, minHeight: '100%' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} barCategoryGap={18}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.3)" />
+              <XAxis 
+                dataKey="name" 
+                stroke="rgb(var(--color-muted) / 0.8)" 
+                fontSize={9} 
+                tickLine={false} 
+                axisLine={false} 
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis stroke="rgb(var(--color-muted) / 0.8)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={chartAxisTickFormatter} />
+              <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} cursor={{ fill: 'rgb(var(--color-accent) / 0.04)' }} />
+              <Legend verticalAlign="top" height={26} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="sap" fill="#3b82f6" name="SAP Revenue" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="simulated" fill="#10b981" name="Simulated Revenue" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     ),
   });
 }
 
 export function CostComparisonChart({ data }: { data: { name: string; sap: number; simulated: number }[] }) {
+  const chartWidth = Math.max(500, data.length * 45);
   return wrapChart({
     title: 'Actual Cost vs Forecast Cost',
+    subtitle: 'Spot variance between booked cost and management outlook.',
     children: (
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.35)" />
-          <XAxis dataKey="name" stroke="rgb(var(--color-muted))" />
-          <YAxis stroke="rgb(var(--color-muted))" tickFormatter={chartAxisTickFormatter} />
-          <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} />
-          <Legend />
-          <Line type="monotone" dataKey="sap" stroke="#f59e0b" name="SAP Actual Cost" />
-          <Line type="monotone" dataKey="simulated" stroke="#43c6b8" name="Simulated Actual Cost" />
-        </LineChart>
-      </ResponsiveContainer>
+      <div className="h-full overflow-x-auto pb-2 scrollbar-thin">
+        <div style={{ width: chartWidth, minHeight: '100%' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.3)" />
+              <XAxis 
+                dataKey="name" 
+                stroke="rgb(var(--color-muted) / 0.8)" 
+                fontSize={9} 
+                tickLine={false} 
+                axisLine={false} 
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis stroke="rgb(var(--color-muted) / 0.8)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={chartAxisTickFormatter} />
+              <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} />
+              <Legend verticalAlign="top" height={26} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="sap" stroke="#f59e0b" strokeWidth={2.5} dot={false} name="SAP Actual Cost" />
+              <Line type="monotone" dataKey="simulated" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="Simulated Actual Cost" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     ),
   });
 }
@@ -94,14 +128,15 @@ export function CostComparisonChart({ data }: { data: { name: string; sap: numbe
 export function TopWbsChart({ data }: { data: { name: string; value: number }[] }) {
   return wrapChart({
     title: 'Top WBS by Recognized Revenue',
+    subtitle: 'Highest contributing WBS lines by recognized value.',
     children: (
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical">
-          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.35)" />
-          <XAxis type="number" stroke="rgb(var(--color-muted))" tickFormatter={chartAxisTickFormatter} />
-          <YAxis dataKey="name" type="category" stroke="rgb(var(--color-muted))" width={160} />
+          <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.3)" />
+          <XAxis type="number" stroke="rgb(var(--color-muted) / 0.8)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={chartAxisTickFormatter} />
+          <YAxis dataKey="name" type="category" stroke="rgb(var(--color-muted) / 0.8)" fontSize={10} width={140} tickLine={false} axisLine={false} />
           <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} />
-          <Bar dataKey="value" fill="#43c6b8">
+          <Bar dataKey="value" radius={[0, 4, 4, 0]}>
             {data.map((entry, index) => (
               <Cell key={entry.name} fill={palette[index % palette.length]} />
             ))}
@@ -113,21 +148,21 @@ export function TopWbsChart({ data }: { data: { name: string; value: number }[] 
 }
 
 export function ScrollableTopWbsChart({ data }: { data: { name: string; value: number }[] }) {
-  const chartHeight = Math.max(360, data.length * 42);
+  const chartHeight = Math.max(360, data.length * 36);
 
   return wrapChart({
     title: 'All WBS by Recognized Revenue',
-    className: 'xl:col-span-1',
+    subtitle: 'Scrollable revenue ranking across the complete filtered set.',
     children: (
       <div className="h-full overflow-y-auto pr-2">
         <div style={{ height: chartHeight, minWidth: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} layout="vertical" margin={{ top: 8, right: 20, left: 8, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.35)" />
-              <XAxis type="number" stroke="rgb(var(--color-muted))" tickFormatter={chartAxisTickFormatter} />
-              <YAxis dataKey="name" type="category" stroke="rgb(var(--color-muted))" width={220} interval={0} tick={{ fontSize: 11 }} />
+              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.3)" />
+              <XAxis type="number" stroke="rgb(var(--color-muted) / 0.8)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={chartAxisTickFormatter} />
+              <YAxis dataKey="name" type="category" stroke="rgb(var(--color-muted) / 0.8)" width={180} interval={0} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} />
-              <Bar dataKey="value" fill="#43c6b8">
+              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                 {data.map((entry, index) => (
                   <Cell key={entry.name} fill={palette[index % palette.length]} />
                 ))}
@@ -143,31 +178,24 @@ export function ScrollableTopWbsChart({ data }: { data: { name: string; value: n
 export function PendingChart({ data }: { data: { name: string; value: number }[] }) {
   return wrapChart({
     title: 'Top WBS with Pending Cost',
+    subtitle: 'Largest unposted exposure across filtered WBS lines.',
     children: (
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" outerRadius={90} innerRadius={50}>
+          <Pie data={data} dataKey="value" nameKey="name" outerRadius={96} innerRadius={58} paddingAngle={3}>
             {data.map((entry, index) => (
               <Cell key={entry.name} fill={palette[index % palette.length]} />
             ))}
           </Pie>
           <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} />
-          <Legend />
+          <Legend verticalAlign="bottom" iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
         </PieChart>
       </ResponsiveContainer>
     ),
   });
 }
 
-export function RevenueSplitChart({
-  recognized,
-  remaining,
-  total,
-}: {
-  recognized: number;
-  remaining: number;
-  total: number;
-}) {
+export function RevenueSplitChart({ recognized, remaining, total }: { recognized: number; remaining: number; total: number }) {
   const chartData = [
     { name: 'Revenue Recognised', value: Math.max(0, recognized) },
     { name: 'Revenue Remaining', value: Math.max(0, remaining) },
@@ -175,38 +203,24 @@ export function RevenueSplitChart({
   const safeTotal = total > 0 ? total : chartData.reduce((sum, item) => sum + item.value, 0);
 
   return wrapChart({
-    title: 'Recognized Revenue vs Remaining Revenue',
+    title: 'Recognized vs Remaining Revenue',
+    subtitle: 'Revenue consumption against the planned commercial ceiling.',
     children: (
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Pie
-            data={chartData}
-            dataKey="value"
-            nameKey="name"
-            outerRadius={92}
-            innerRadius={58}
-            paddingAngle={3}
-            stroke="rgb(var(--color-panel))"
-            strokeWidth={2}
-          >
+          <Pie data={chartData} dataKey="value" nameKey="name" outerRadius={96} innerRadius={58} paddingAngle={3} stroke="rgb(var(--color-panel))" strokeWidth={2}>
             {chartData.map((entry, index) => (
-              <Cell key={entry.name} fill={index === 0 ? '#43c6b8' : '#f59e0b'} />
+              <Cell key={entry.name} fill={index === 0 ? '#3b82f6' : '#f59e0b'} />
             ))}
           </Pie>
           <Tooltip
             contentStyle={chartTooltipStyle}
-            itemStyle={chartLegendStyle}
-            labelStyle={chartLegendStyle}
             formatter={(value: number, name: string) => {
               const percent = safeTotal > 0 ? (value / safeTotal) * 100 : 0;
               return [`${formatCompactCurrency(value)} (${formatPercent(percent)})`, name];
             }}
           />
-          <Legend
-            iconType="circle"
-            wrapperStyle={{ color: 'rgb(var(--color-text))' }}
-            formatter={(value) => <span className="text-sm text-text">{value}</span>}
-          />
+          <Legend verticalAlign="bottom" iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} formatter={(value) => <span className="text-xs text-text">{value}</span>} />
         </PieChart>
       </ResponsiveContainer>
     ),
@@ -214,18 +228,34 @@ export function RevenueSplitChart({
 }
 
 export function PocChart({ data }: { data: { name: string; value: number }[] }) {
+  const chartWidth = Math.max(500, data.length * 45);
   return wrapChart({
     title: 'POC % by WBS',
+    subtitle: 'Progress concentration across filtered work packages.',
     children: (
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.35)" />
-          <XAxis dataKey="name" stroke="rgb(var(--color-muted))" />
-          <YAxis stroke="rgb(var(--color-muted))" tickFormatter={chartAxisTickFormatter} />
-          <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} />
-          <Bar dataKey="value" fill="#ef4444" />
-        </BarChart>
-      </ResponsiveContainer>
+      <div className="h-full overflow-x-auto pb-2 scrollbar-thin">
+        <div style={{ width: chartWidth, minHeight: '100%' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.3)" />
+              <XAxis 
+                dataKey="name" 
+                stroke="rgb(var(--color-muted) / 0.8)" 
+                fontSize={9} 
+                tickLine={false} 
+                axisLine={false} 
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis stroke="rgb(var(--color-muted) / 0.8)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={chartAxisTickFormatter} />
+              <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} />
+              <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     ),
   });
 }
@@ -233,18 +263,20 @@ export function PocChart({ data }: { data: { name: string; value: number }[] }) 
 export function RiskChart({ data }: { data: { name: string; value: number }[] }) {
   return wrapChart({
     title: 'Risk Count by Type',
+    subtitle: 'Current alert mix across all identified control exceptions.',
     children: (
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" outerRadius={90}>
+          <Pie data={data} dataKey="value" nameKey="name" outerRadius={96} innerRadius={38}>
             {data.map((entry, index) => (
               <Cell key={entry.name} fill={palette[index % palette.length]} />
             ))}
           </Pie>
           <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} />
-          <Legend />
+          <Legend verticalAlign="bottom" iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
         </PieChart>
       </ResponsiveContainer>
     ),
   });
 }
+

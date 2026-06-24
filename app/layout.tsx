@@ -2,8 +2,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Cost-to-Cost Revenue Dashboard',
-  description: 'Project financial tracking and revenue recognition built with Next.js and Supabase.',
+  title: 'NMFOC Executive Financial Control',
+  description: 'Enterprise project financial tracking, revenue recognition, risk, and reporting built with Next.js and Supabase.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -16,16 +16,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               (function() {
                 try {
                   var theme = localStorage.getItem('sap-cn41-theme');
-                  if (theme === 'light' || theme === 'dark') {
-                    document.documentElement.dataset.theme = theme;
-                  }
-                } catch (e) {}
+                  var nextTheme = theme === 'light' || theme === 'dark' ? theme : 'light';
+                  document.documentElement.dataset.theme = nextTheme;
+                } catch (e) {
+                  document.documentElement.dataset.theme = 'light';
+                }
               })();
             `,
           }}
         />
       </head>
-      <body>{children}</body>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

@@ -58,3 +58,11 @@ export async function requireAdminUser() {
   }
   return user;
 }
+
+export function canEditProjectMaster(role?: string | null): boolean {
+  return role === 'Admin' || role === 'Cost Controller';
+}
+
+export function canAccessSettings(role?: string | null): boolean {
+  return role === 'Admin' || role === 'Cost Controller';
+}

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PageShell, EmptyState } from '@/components/ui';
 import { getProjects } from '@/lib/data';
-import { Briefcase, Building2, User, ArrowRight, FolderKanban } from 'lucide-react';
+import { ArrowRight, Building2, FolderKanban, User } from 'lucide-react';
 
 export default async function DashboardIndexPage() {
   const projects = await getProjects();
@@ -15,56 +15,42 @@ export default async function DashboardIndexPage() {
   }
 
   return (
-    <PageShell 
-      title="Project Control Center" 
-      subtitle="Select an active project below to access the Cost-to-Cost financial summary, period rollups, and risk analysis."
-    >
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <PageShell title="Project Control Center" subtitle="Select an active project below to access financial summary, period rollups, WBS exposure, and risk insight.">
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {projects.map((project) => (
-          <Link 
-            key={project.id} 
-            href={`/dashboard/${project.id}`} 
-            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-all duration-300 hover:scale-[1.02] hover:border-accent/40 hover:bg-white/[0.06] hover:shadow-glow"
-          >
-            {/* Top Border Accent */}
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-accent/0 via-accent/30 to-accent/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/5 bg-white/5 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+          <Link key={project.id} href={`/dashboard/${project.id}`} className="group surface-card relative overflow-hidden p-6 transition-transform duration-200 hover:-translate-y-1 hover:border-accent/35">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
+            <div className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 rounded-full border border-line/70 bg-panel2/75 px-3 py-1 text-xs font-semibold text-muted">
                 <FolderKanban className="h-3.5 w-3.5 text-accent" />
                 {project.project_code}
               </span>
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
-                project.status === 'Active' 
-                  ? 'bg-success/10 text-success border-success/20' 
-                  : 'bg-warning/10 text-warning border-warning/20'
-              }`}>
+              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${project.status === 'Active' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
                 {project.status ?? 'Active'}
               </span>
             </div>
 
-            <h3 className="mt-4 text-lg font-semibold tracking-tight text-text transition-colors duration-200 group-hover:text-accent">
-              {project.project_name}
-            </h3>
+            <h3 className="mt-5 text-xl font-semibold tracking-tight text-text transition-colors group-hover:text-accent">{project.project_name}</h3>
+            <p className="mt-2 text-sm leading-6 text-muted">Executive-level cost and revenue monitoring workspace for this delivery scope.</p>
 
-            <div className="mt-6 space-y-2 border-t border-white/5 pt-4 text-sm text-muted">
-              {project.client_name && (
+            <div className="mt-6 space-y-3 border-t border-line/60 pt-4 text-sm text-muted">
+              {project.client_name ? (
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted/60" />
+                  <Building2 className="h-4 w-4 text-muted/70" />
                   <span className="truncate">Client: <span className="font-medium text-text">{project.client_name}</span></span>
                 </div>
-              )}
-              {project.project_manager_name && (
+              ) : null}
+              {project.project_manager_name ? (
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted/60" />
+                  <User className="h-4 w-4 text-muted/70" />
                   <span className="truncate">PM: <span className="font-medium text-text">{project.project_manager_name}</span></span>
                 </div>
-              )}
+              ) : null}
             </div>
 
-            <div className="mt-6 flex items-center justify-between text-xs font-medium text-accent opacity-80 group-hover:opacity-100">
-              <span>Enter Workspace</span>
-              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+            <div className="mt-6 flex items-center justify-between text-sm font-medium text-accent">
+              <span>Open executive dashboard</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>
         ))}

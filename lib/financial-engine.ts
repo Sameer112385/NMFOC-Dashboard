@@ -118,12 +118,21 @@ export function buildFinancialRowsFromSources({
         ...relatedUpdates.map((update) => update.update_date),
       ]);
       const isActive = config ? config.is_active !== false : true;
-      const includeInCost = hasWbsMaster ? Boolean(config?.include_in_cost && config?.is_active !== false) : config ? config.include_in_cost !== false : true;
+      if (!isActive) return null;
+
+      const includeInCost = hasWbsMaster
+        ? Boolean(config?.include_in_cost && config?.is_active !== false)
+        : config
+          ? config.include_in_cost !== false
+          : true;
+
       const isRevenueGenerating = hasWbsMaster
-        ? Boolean(config?.is_active !== false && (config?.is_revenue_generating || salesRows.length > 0))
+        ? Boolean(config?.is_active !== false && config?.is_revenue_generating)
         : config
           ? config.is_revenue_generating !== false
           : salesRows.length > 0;
+
+      if (!includeInCost && !isRevenueGenerating) return null;
 
       return buildFinancialWbsRow({
         projectId,

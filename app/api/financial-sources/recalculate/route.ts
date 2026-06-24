@@ -26,6 +26,17 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createSupabaseServerClient();
+
+    const [latestCn41, latestGr55, latestSales] = await Promise.all([
+      supabase.from('cn41_uploads').select('id').eq('project_id', projectId).eq('is_latest', true).order('upload_date', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('gr55_uploads').select('id').eq('project_id', projectId).eq('is_latest', true).order('upload_date', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('sales_order_uploads').select('id').eq('project_id', projectId).eq('is_latest', true).order('upload_date', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+
+    const cn41UploadId = latestCn41.data?.id;
+    const gr55UploadId = latestGr55.data?.id;
+    const salesUploadId = latestSales.data?.id;
+
     const [
       cn41Rows,
       gr55Rows,
@@ -35,9 +46,15 @@ export async function POST(request: Request) {
       projectWbsMaster,
       projectCostElements,
     ] = await Promise.all([
-      fetchAllSupabaseRows<any>(() => supabase.from('cn41_rows').select('*').eq('project_id', projectId)),
-      fetchAllSupabaseRows<any>(() => supabase.from('gr55_rows').select('*').eq('project_id', projectId)),
-      fetchAllSupabaseRows<any>(() => supabase.from('sales_order_rows').select('*').eq('project_id', projectId)),
+      cn41UploadId
+        ? fetchAllSupabaseRows<any>(() => supabase.from('cn41_rows').select('*').eq('project_id', projectId).eq('upload_id', cn41UploadId))
+        : Promise.resolve([]),
+      gr55UploadId
+        ? fetchAllSupabaseRows<any>(() => supabase.from('gr55_rows').select('*').eq('project_id', projectId).eq('upload_id', gr55UploadId))
+        : Promise.resolve([]),
+      salesUploadId
+        ? fetchAllSupabaseRows<any>(() => supabase.from('sales_order_rows').select('*').eq('project_id', projectId).eq('upload_id', salesUploadId))
+        : Promise.resolve([]),
       fetchAllSupabaseRows<any>(() => supabase.from('pm_daily_updates').select('*').eq('project_id', projectId)),
       fetchAllSupabaseRows<any>(() => supabase.from('revenue_wbs').select('*').eq('project_id', projectId)),
       fetchAllSupabaseRows<any>(() => supabase.from('project_wbs_master').select('*').eq('project_id', projectId)),

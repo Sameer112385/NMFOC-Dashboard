@@ -218,6 +218,10 @@ create index if not exists idx_project_wbs_master_project on project_wbs_master(
 create index if not exists idx_gr55_uploads_project_latest on gr55_uploads(project_id, is_latest desc, upload_date desc);
 create index if not exists idx_sales_order_uploads_project_latest on sales_order_uploads(project_id, is_latest desc, upload_date desc);
 create index if not exists idx_gr55_rows_project on gr55_rows(project_id, posting_date desc, wbs_code);
+
+-- Add purchasing_document column to gr55_rows (safe migration, nullable)
+alter table if exists gr55_rows add column if not exists purchasing_document text;
+create index if not exists idx_gr55_rows_purchasing_doc on gr55_rows(project_id, purchasing_document);
 create index if not exists idx_sales_order_rows_project on sales_order_rows(project_id, effective_date desc, wbs_code);
 
 alter table if exists project_manpower_rates enable row level security;

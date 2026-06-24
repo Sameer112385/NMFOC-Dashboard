@@ -37,7 +37,7 @@ export default function LoginPage() {
             setIsSupabaseConfigured(true);
             try {
               const supabase = createSupabaseBrowserClient();
-              supabase.auth.signOut();
+              supabase.auth.signOut().catch(() => {});
             } catch {
               // ignore
             }
@@ -59,7 +59,7 @@ export default function LoginPage() {
       if (configured) {
         try {
           const supabase = createSupabaseBrowserClient();
-          supabase.auth.signOut();
+          supabase.auth.signOut().catch(() => {});
         } catch {
           // ignore
         }
@@ -179,21 +179,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-bg px-5 py-10">
-      <div className="glass w-full max-w-md rounded-3xl p-10 shadow-glow flex flex-col items-center">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-tr from-panel2 via-bg to-panel2 px-5 py-12">
+      {/* Decorative background glow spots */}
+      <div className="absolute top-1/4 left-1/4 h-80 w-80 -translate-x-1/2 rounded-full bg-accent/5 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 h-80 w-80 translate-x-1/2 rounded-full bg-cyan-500/5 blur-[120px] pointer-events-none" />
+
+      <div className="relative w-full max-w-[420px] rounded-2xl border border-line bg-panel/60 p-8 shadow-glow backdrop-blur-xl transition-all duration-300 hover:shadow-card flex flex-col items-center">
         {/* Detasad Branding */}
         <div className="flex flex-col items-center text-center">
-          <div className="text-4xl font-black tracking-widest bg-gradient-to-r from-accent via-cyan-400 to-blue-500 bg-clip-text text-transparent">
+          <div className="text-3xl font-black tracking-[0.2em] bg-gradient-to-r from-accent via-cyan-400 to-blue-500 bg-clip-text text-transparent select-none">
             DETASAD
           </div>
-          <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground/80">
+          <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.3em] text-muted/70">
             Detecon Al Saudia
           </div>
-          <h1 className="mt-6 text-2xl font-bold tracking-tight text-text">
-            Project Dashboard
+          <h1 className="mt-6 text-xl font-bold tracking-tight text-text">
+            NMFOC Dashboard
           </h1>
-          <p className="mt-2 text-xs text-muted">
-            {isSignUp ? "Create an account to get started." : "Sign in to access project baselines, updates, and simulations."}
+          <p className="mt-2 text-xs text-muted/80 font-medium">
+            {isSignUp ? "Create a secure account to get started." : "Sign in to access project baselines, updates, and simulations."}
           </p>
         </div>
 
@@ -202,27 +206,28 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowDbPanel(v => !v)}
-            className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-semibold transition hover:bg-white/[0.06]"
+            className="flex w-full items-center justify-between rounded-lg border border-line bg-panel2/40 px-3.5 py-2.5 text-[11px] font-bold text-text transition hover:bg-panel2/70 hover:border-line-hover"
           >
             <span className="flex items-center gap-2">
               <Database className="h-3.5 w-3.5 text-accent" />
-              <span className="text-muted">Database</span>
-              <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${isSupabaseConfigured ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>
-                {isSupabaseConfigured ? 'Connected' : 'Not connected'}
+              <span className="text-muted/80">Database Engine</span>
+              <span className={`ml-1 rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide uppercase ${isSupabaseConfigured ? 'bg-success/10 text-success border border-success/15' : 'bg-warning/10 text-warning border border-warning/15'}`}>
+                {isSupabaseConfigured ? 'Cloud Link' : 'Demo DB'}
               </span>
             </span>
-            {showDbPanel ? <ChevronUp className="h-3.5 w-3.5 text-muted" /> : <ChevronDown className="h-3.5 w-3.5 text-muted" />}
+            {showDbPanel ? <ChevronUp className="h-3.5 w-3.5 text-muted/70" /> : <ChevronDown className="h-3.5 w-3.5 text-muted/70" />}
           </button>
 
           {showDbPanel && (
-            <form onSubmit={handleDbSave} className="mt-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+            <form onSubmit={handleDbSave} className="mt-2 rounded-lg border border-line bg-panel2/20 p-4 space-y-3">
+              <div className="text-xs font-bold text-text uppercase tracking-wider">Supabase Connection Settings</div>
               <label className="block">
                 <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted">Supabase URL</span>
                 <input
                   value={dbUrl}
                   onChange={e => setDbUrl(e.target.value)}
                   placeholder="https://xxxx.supabase.co"
-                  className="w-full rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2.5 text-xs text-text outline-none placeholder:text-muted/40 focus:border-accent/40"
+                  className={inputClass}
                 />
               </label>
               <label className="block">
@@ -231,68 +236,68 @@ export default function LoginPage() {
                   value={dbAnonKey}
                   onChange={e => setDbAnonKey(e.target.value)}
                   placeholder="eyJ..."
-                  className="w-full rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2.5 text-xs text-text outline-none placeholder:text-muted/40 focus:border-accent/40"
+                  className={inputClass}
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted">Service Role Key <span className="normal-case text-muted/60">(optional)</span></span>
+                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted">Service Role Key <span className="normal-case text-muted/65 font-medium">(optional)</span></span>
                 <input
                   value={dbServiceKey}
                   onChange={e => setDbServiceKey(e.target.value)}
                   placeholder="eyJ..."
-                  className="w-full rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2.5 text-xs text-text outline-none placeholder:text-muted/40 focus:border-accent/40"
+                  className={inputClass}
                 />
               </label>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 pt-1">
                 <button
                   type="submit"
                   disabled={dbSaving}
-                  className="rounded-xl bg-accent px-4 py-2.5 text-xs font-semibold text-bg transition hover:opacity-90 disabled:opacity-60"
+                  className="rounded-lg bg-accent text-white px-3.5 py-2 text-xs font-semibold shadow hover:bg-accent-hover transition"
                 >
-                  {dbSaving ? 'Connecting...' : 'Connect'}
+                  {dbSaving ? 'Connecting...' : 'Connect Engine'}
                 </button>
-                {dbMessage && <span className="text-xs text-warning">{dbMessage}</span>}
+                {dbMessage && <span className="text-[10px] font-semibold text-warning">{dbMessage}</span>}
               </div>
             </form>
           )}
         </div>
 
-        <form className="mt-8 w-full space-y-4" onSubmit={handleSubmit}>
+        <form className="mt-6 w-full space-y-4" onSubmit={handleSubmit}>
           <label className="block">
-            <span className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-muted">Email or Username</span>
+            <span className="mb-1.5 block text-xs font-semibold text-muted">Email or Username</span>
             <input
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               type="text"
-              className="w-full rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-sm text-text outline-none transition duration-200 placeholder:text-muted/40 focus:border-accent/40 focus:bg-white/[0.05]"
-              placeholder={isSupabaseConfigured ? "name@company.com" : "admin"}
+              className={inputClass}
+              placeholder={isSupabaseConfigured ? "name@detasad.com" : "admin"}
             />
           </label>
           <label className="block">
-            <span className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-muted">Password</span>
+            <span className="mb-1.5 block text-xs font-semibold text-muted">Password</span>
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               type="password"
-              className="w-full rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3.5 text-sm text-text outline-none transition duration-200 placeholder:text-muted/40 focus:border-accent/40 focus:bg-white/[0.05]"
+              className={inputClass}
               placeholder="••••••••"
             />
           </label>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-2.5 pt-2">
             <button
               disabled={loading}
               type="submit"
-              className="flex-1 rounded-xl bg-accent px-4 py-3.5 text-sm font-semibold text-bg transition duration-200 hover:opacity-90 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:pointer-events-none"
+              className="flex-1 rounded-lg bg-accent text-white px-4 py-2.5 text-xs font-semibold shadow hover:bg-accent-hover active:scale-[0.98] transition disabled:opacity-60 disabled:pointer-events-none"
             >
-              {loading ? (isSignUp ? "Registering..." : "Signing in...") : (isSignUp ? "Sign Up" : "Sign In")}
+              {loading ? (isSignUp ? "Registering..." : "Signing in...") : (isSignUp ? "Create Account" : "Access System")}
             </button>
             {!isSignUp && (
               <button
                 disabled={loading || !email}
                 type="button"
                 onClick={handleMagicLink}
-                className="flex-1 rounded-xl border border-white/10 px-4 py-3.5 text-sm font-semibold text-text transition duration-200 hover:bg-white/5 active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none"
+                className="flex-1 rounded-lg border border-line bg-panel/60 px-4 py-2.5 text-xs font-semibold text-text hover:bg-panel2/80 active:scale-[0.98] transition disabled:opacity-50 disabled:pointer-events-none"
               >
                 Magic Link
               </button>
@@ -300,7 +305,7 @@ export default function LoginPage() {
           </div>
         </form>
 
-        <div className="mt-6 text-center text-xs text-muted">
+        <div className="mt-6 text-center text-xs text-muted/90 font-medium">
           {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
           <button
             type="button"
@@ -308,14 +313,14 @@ export default function LoginPage() {
               setIsSignUp(!isSignUp);
               setMessage("");
             }}
-            className="text-accent hover:underline font-semibold"
+            className="text-accent hover:underline font-bold"
           >
             {isSignUp ? "Sign In" : "Sign Up"}
           </button>
         </div>
 
         {message ? (
-          <p className="mt-4 text-center text-xs text-muted bg-white/5 px-3 py-2 rounded-lg">
+          <p className="mt-4 text-center text-xs font-semibold text-accent/90 bg-accent/5 border border-accent/10 px-3.5 py-2.5 rounded-lg w-full">
             {message}
           </p>
         ) : null}
@@ -323,4 +328,7 @@ export default function LoginPage() {
     </div>
   );
 }
+
+const inputClass = "w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-xs text-text outline-none placeholder:text-muted/45 focus:border-accent focus:ring-1 focus:ring-accent transition shadow-sm";
+
 

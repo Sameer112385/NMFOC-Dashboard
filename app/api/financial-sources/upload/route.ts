@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { fetchAllSupabaseRows } from '@/lib/supabase/pagination';
 import { buildFinancialRowsFromSources } from '@/lib/financial-engine';
 import { truncateFinancialOutput } from '@/lib/financial-format';
@@ -107,7 +108,7 @@ async function handleCn41Upload({ file, projectId, localMode, versionNo }: { fil
     };
   }
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseAdminClient();
   const buffer = await file.arrayBuffer();
   const storagePath = `cn41/${projectId}/${Date.now()}-${file.name}`;
   const { error: uploadError } = await supabase.storage.from('cn41-files').upload(storagePath, new Uint8Array(buffer), {
@@ -118,6 +119,11 @@ async function handleCn41Upload({ file, projectId, localMode, versionNo }: { fil
 
   const { data: publicUrlData } = supabase.storage.from('cn41-files').getPublicUrl(storagePath);
   const fileUrl = publicUrlData.publicUrl;
+
+  // Clear previous CN41 rows and upload records to avoid calculations carrying legacy data
+  await supabase.from('cn41_rows').delete().eq('project_id', projectId);
+  await supabase.from('cn41_uploads').delete().eq('project_id', projectId);
+
   const { data: uploadRow, error: uploadRowError } = await supabase
     .from('cn41_uploads')
     .insert({
@@ -132,8 +138,6 @@ async function handleCn41Upload({ file, projectId, localMode, versionNo }: { fil
     .single();
   if (uploadRowError) throw new Error(uploadRowError.message);
 
-  await supabase.from('cn41_uploads').update({ is_latest: false }).eq('project_id', projectId).neq('id', uploadRow.id);
-  await supabase.from('cn41_rows').delete().eq('project_id', projectId);
   // Chunk insertions for CN41 rows (2000 rows per batch) to prevent gateway timeouts
   const cn41ChunkSize = 2000;
   for (let i = 0; i < parsed.rows.length; i += cn41ChunkSize) {
@@ -185,7 +189,7 @@ async function handleGr55Upload({ file, projectId, localMode, versionNo }: { fil
     return { sourceType: 'gr55', upload, projectId, rowCount: parsed.rows.length };
   }
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseAdminClient();
   const buffer = await file.arrayBuffer();
   const storagePath = `gr55/${projectId}/${Date.now()}-${file.name}`;
   const { error: uploadError } = await supabase.storage.from('cn41-files').upload(storagePath, new Uint8Array(buffer), {
@@ -196,6 +200,11 @@ async function handleGr55Upload({ file, projectId, localMode, versionNo }: { fil
 
   const { data: publicUrlData } = supabase.storage.from('cn41-files').getPublicUrl(storagePath);
   const fileUrl = publicUrlData.publicUrl;
+
+  // Clear previous GR55 rows and upload records to avoid double counting costs
+  await supabase.from('gr55_rows').delete().eq('project_id', projectId);
+  await supabase.from('gr55_uploads').delete().eq('project_id', projectId);
+
   const { data: uploadRow, error: uploadRowError } = await supabase
     .from('gr55_uploads')
     .insert({
@@ -210,10 +219,6 @@ async function handleGr55Upload({ file, projectId, localMode, versionNo }: { fil
     .single();
   if (uploadRowError) throw new Error(uploadRowError.message);
 
-  await supabase.from('gr55_uploads').update({ is_latest: false }).eq('project_id', projectId).neq('id', uploadRow.id);
-  const { error: deleteOldRowsError } = await supabase.from('gr55_rows').delete().eq('project_id', projectId);
-  if (deleteOldRowsError) throw new Error(`Failed to clear old GR55 rows: ${deleteOldRowsError.message}`);
-  
   // Compact GR55 rows can be inserted in larger chunks; run a few chunks in parallel to keep uploads responsive.
   const chunkSize = 2000;
   const parallelChunks = 4;
@@ -262,7 +267,7 @@ async function handleSalesOrderUpload({ file, projectId, localMode, versionNo }:
     return { sourceType: 'sales_order', upload, projectId, rowCount: parsed.rows.length };
   }
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseAdminClient();
   const buffer = await file.arrayBuffer();
   const storagePath = `sales-order/${projectId}/${Date.now()}-${file.name}`;
   const { error: uploadError } = await supabase.storage.from('cn41-files').upload(storagePath, new Uint8Array(buffer), {
@@ -273,6 +278,11 @@ async function handleSalesOrderUpload({ file, projectId, localMode, versionNo }:
 
   const { data: publicUrlData } = supabase.storage.from('cn41-files').getPublicUrl(storagePath);
   const fileUrl = publicUrlData.publicUrl;
+
+  // Clear previous Sales Order rows and upload records to avoid duplicate revenue accumulation
+  await supabase.from('sales_order_rows').delete().eq('project_id', projectId);
+  await supabase.from('sales_order_uploads').delete().eq('project_id', projectId);
+
   const { data: uploadRow, error: uploadRowError } = await supabase
     .from('sales_order_uploads')
     .insert({
@@ -287,7 +297,6 @@ async function handleSalesOrderUpload({ file, projectId, localMode, versionNo }:
     .single();
   if (uploadRowError) throw new Error(uploadRowError.message);
 
-  await supabase.from('sales_order_uploads').update({ is_latest: false }).eq('project_id', projectId).neq('id', uploadRow.id);
   await supabase.from('sales_order_rows').insert(
     parsed.rows.map((row) => ({
       ...row,

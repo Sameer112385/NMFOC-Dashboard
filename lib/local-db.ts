@@ -41,10 +41,15 @@ type LocalDb = {
 const dbDir = path.join(process.cwd(), '.local-db');
 const dbFile = path.join(dbDir, 'db.json');
 
+let cachedDb: LocalDb | null = null;
+
 async function ensureDb(): Promise<LocalDb> {
+  if (cachedDb) {
+    return cachedDb;
+  }
   try {
     const parsed = JSON.parse(await readFile(dbFile, 'utf8')) as Partial<LocalDb>;
-    return {
+    cachedDb = {
       projects: parsed.projects ?? [],
       cn41_uploads: parsed.cn41_uploads ?? [],
       cn41_rows: parsed.cn41_rows ?? [],
@@ -87,6 +92,7 @@ async function ensureDb(): Promise<LocalDb> {
         phone: user.phone ?? null,
       })),
     };
+    return cachedDb;
   } catch {
     const seed: LocalDb = {
       projects: [],
@@ -108,12 +114,14 @@ async function ensureDb(): Promise<LocalDb> {
       comments: [],
       users: [],
     };
+    cachedDb = seed;
     await saveDb(seed);
     return seed;
   }
 }
 
 async function saveDb(db: LocalDb) {
+  cachedDb = db;
   await mkdir(dbDir, { recursive: true });
   await writeFile(dbFile, JSON.stringify(db, null, 2), 'utf8');
 }
@@ -365,7 +373,7 @@ export async function saveCn41Upload(input: {
     version_no: input.version_no,
     is_latest: true,
   };
-  db.cn41_uploads = db.cn41_uploads.map((x) => ({ ...x, is_latest: x.project_id === input.project_id ? false : x.is_latest }));
+  db.cn41_uploads = db.cn41_uploads.filter((x) => x.project_id !== input.project_id);
   db.cn41_uploads.unshift(upload);
   db.cn41_rows = db.cn41_rows.filter((row) => row.project_id !== input.project_id);
   db.cn41_rows.push(...input.rows.map((row) => ({ ...row, upload_id: upload.id, project_id: input.project_id })));
@@ -393,7 +401,7 @@ export async function saveGr55Upload(input: {
     version_no: input.version_no,
     is_latest: true,
   };
-  db.gr55_uploads = db.gr55_uploads.map((x) => ({ ...x, is_latest: x.project_id === input.project_id ? false : x.is_latest }));
+  db.gr55_uploads = db.gr55_uploads.filter((x) => x.project_id !== input.project_id);
   db.gr55_uploads.unshift(upload);
   db.gr55_rows = db.gr55_rows.filter((row) => row.project_id !== input.project_id);
   db.gr55_rows.push(...input.rows.map((row) => ({ ...row, upload_id: upload.id, project_id: input.project_id })));
@@ -421,7 +429,7 @@ export async function saveSalesOrderUpload(input: {
     version_no: input.version_no,
     is_latest: true,
   };
-  db.sales_order_uploads = db.sales_order_uploads.map((x) => ({ ...x, is_latest: x.project_id === input.project_id ? false : x.is_latest }));
+  db.sales_order_uploads = db.sales_order_uploads.filter((x) => x.project_id !== input.project_id);
   db.sales_order_uploads.unshift(upload);
   db.sales_order_rows = db.sales_order_rows.filter((row) => row.project_id !== input.project_id);
   db.sales_order_rows.push(...input.rows.map((row) => ({ ...row, upload_id: upload.id, project_id: input.project_id })));
@@ -607,6 +615,30 @@ export async function updatePmUpdatePostingStatus(
   return updatedRow;
 }
 
+export async function deleteLocalPmUpdate(id: string) {
+  const db = await ensureDb();
+  db.pm_daily_updates = db.pm_daily_updates.filter((item) => item.id !== id);
+  await rebuildRevenueRows(db);
+  await saveDb(db);
+}
+
+export async function updateLocalPmUpdate(id: string, patch: Partial<DailyUpdate>) {
+  const db = await ensureDb();
+  let updated = null;
+  db.pm_daily_updates = db.pm_daily_updates.map((item) => {
+    if (item.id !== id) return item;
+    updated = {
+      ...item,
+      ...patch,
+    };
+    return updated;
+  });
+  await rebuildRevenueRows(db);
+  await saveDb(db);
+  return updated;
+}
+
+
 export async function createProjectManpowerRate(input: Omit<ProjectManpowerRate, 'id' | 'created_at'>) {
   const db = await ensureDb();
   const row: ProjectManpowerRate = {
@@ -701,6 +733,39 @@ export async function deleteProjectMaterialMaster(id: string) {
   db.project_material_master = db.project_material_master.filter((item) => item.id !== id);
   await saveDb(db);
 }
+
+export async function updateLocalProjectMaterialMaster(id: string, patch: Partial<Omit<ProjectMaterialMaster, 'id' | 'created_at'>>) {
+  const db = await ensureDb();
+  let updated = null;
+  db.project_material_master = db.project_material_master.map((item) => {
+    if (item.id !== id) return item;
+    updated = {
+      ...item,
+      ...patch,
+    };
+    return updated;
+  });
+  await rebuildRevenueRows(db);
+  await saveDb(db);
+  return updated;
+}
+
+export async function updateLocalProjectManpowerRate(id: string, patch: Partial<Omit<ProjectManpowerRate, 'id' | 'created_at'>>) {
+  const db = await ensureDb();
+  let updated = null;
+  db.project_manpower_rates = db.project_manpower_rates.map((item) => {
+    if (item.id !== id) return item;
+    updated = {
+      ...item,
+      ...patch,
+    };
+    return updated;
+  });
+  await rebuildRevenueRows(db);
+  await saveDb(db);
+  return updated;
+}
+
 
 export async function saveComment(input: { project_id: string; wbs_code: string; comment_text: string; created_by: string | null }) {
   const db = await ensureDb();

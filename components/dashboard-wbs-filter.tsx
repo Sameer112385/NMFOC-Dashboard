@@ -1,8 +1,11 @@
 "use client";
 
+import { ArrowDownUp, Download } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { Badge, surfaceCard } from '@/components/ui';
 import { DarkSelect } from '@/components/dark-select';
+import { MultiWbsSelect } from '@/components/multi-wbs-select';
 import { formatCurrency, formatPercent } from '@/lib/utils';
 import {
   CostComparisonChart,
@@ -11,6 +14,7 @@ import {
   RevenueSplitChart,
   RevenueVsSimulationChart,
   ScrollableTopWbsChart,
+  TopWbsChart,
 } from '@/components/charts';
 
 type RevenueRow = {
@@ -40,54 +44,62 @@ type RevenueRow = {
   opening_recognized_revenue?: number;
 };
 
-export function DashboardWbsFilter({ rows }: { rows: RevenueRow[] }) {
-  const [wbsQuery, setWbsQuery] = useState('');
+type SortKey = 'wbs_code' | 'wbs_description' | 'planned_cost' | 'actual_cost_to_date' | 'planned_revenue' | 'recognized_revenue_to_date' | 'remaining_revenue' | 'remaining_cost' | 'poc_percent' | 'forecast_margin' | 'forecast_margin_percent';
+
+function getStatusTone(row: RevenueRow): 'default' | 'success' | 'warning' | 'danger' {
+  if (row.status.toLowerCase() === 'overrun' || row.forecast_margin < 0) return 'danger';
+  if (row.poc_percent >= 90) return 'warning';
+  if (row.poc_percent > 0) return 'success';
+  return 'default';
+}
+
+export function DashboardWbsFilter({
+  rows,
+  selectedPo = '',
+  setSelectedPo = () => {},
+  poOptions = [],
+}: {
+  rows: RevenueRow[];
+  selectedPo?: string;
+  setSelectedPo?: (val: string) => void;
+  poOptions?: string[];
+}) {
+  const [selectedWbs, setSelectedWbs] = useState<string[]>([]);
   const [descriptionQuery, setDescriptionQuery] = useState('');
   const [statusQuery, setStatusQuery] = useState('');
   const [percentageQuery, setPercentageQuery] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('recognized_revenue_to_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  const descriptionOptions = useMemo(
-    () => Array.from(new Set(rows.map((row) => row.wbs_description).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
-    [rows],
-  );
+  const wbsOptions = useMemo(() => {
+    return rows.map((r) => ({
+      value: r.wbs_code,
+      label: r.wbs_description ? `${r.wbs_code} - ${r.wbs_description}` : r.wbs_code,
+    })).sort((a, b) => a.value.localeCompare(b.value));
+  }, [rows]);
 
-  const descriptionChoices = useMemo(
-    () => [
-      { value: '', label: 'All descriptions' },
-      ...descriptionOptions.map((description) => ({ value: description, label: description })),
-    ],
-    [descriptionOptions],
-  );
-
-  const statusChoices = useMemo(
-    () => [
-      { value: '', label: 'All statuses' },
-      ...Array.from(new Set(rows.map((row) => row.status).filter(Boolean))).sort((a, b) => a.localeCompare(b)).map((status) => ({
-        value: status,
-        label: status,
-      })),
-    ],
-    [rows],
-  );
-
-  const percentageChoices = useMemo(
-    () => [
-      { value: '', label: 'All percentages' },
-      { value: '0-25', label: '0% - 25%' },
-      { value: '25-50', label: '25% - 50%' },
-      { value: '50-75', label: '50% - 75%' },
-      { value: '75-100', label: '75% - 100%' },
-      { value: '100+', label: '100%+' },
-    ],
-    [],
-  );
+  const descriptionOptions = useMemo(() => Array.from(new Set(rows.map((row) => row.wbs_description).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [rows]);
+  const descriptionChoices = useMemo(() => [{ value: '', label: 'All descriptions' }, ...descriptionOptions.map((description) => ({ value: description, label: description }))], [descriptionOptions]);
+  const statusChoices = useMemo(() => [{ value: '', label: 'All statuses' }, ...Array.from(new Set(rows.map((row) => row.status).filter(Boolean))).sort((a, b) => a.localeCompare(b)).map((status) => ({ value: status, label: status }))], [rows]);
+  const percentageChoices = useMemo(() => [
+    { value: '', label: 'All percentages' },
+    { value: '0-25', label: '0% - 25%' },
+    { value: '25-50', label: '25% - 50%' },
+    { value: '50-75', label: '50% - 75%' },
+    { value: '75-100', label: '75% - 100%' },
+    { value: '100+', label: '100%+' },
+  ], []);
 
   const filteredRows = useMemo(() => {
-    const wbs = wbsQuery.trim().toLowerCase();
     const desc = descriptionQuery.trim().toLowerCase();
     const status = statusQuery.trim().toLowerCase();
+    
     return rows.filter((row) => {
-      const matchesWbs = !wbs || row.wbs_code.toLowerCase().includes(wbs);
+      // WBS filter: support multiple selection (match by hierarchical startsWith prefix)
+      const matchesWbs =
+        selectedWbs.length === 0 ||
+        selectedWbs.some((f) => row.wbs_code.toLowerCase().startsWith(f.toLowerCase()));
+        
       const matchesDesc = !desc || row.wbs_description.toLowerCase().includes(desc);
       const matchesStatus = !status || row.status.toLowerCase() === status;
       const p = row.poc_percent;
@@ -100,7 +112,17 @@ export function DashboardWbsFilter({ rows }: { rows: RevenueRow[] }) {
         (percentageQuery === '100+' && p > 100);
       return matchesWbs && matchesDesc && matchesStatus && matchesPercentage;
     });
-  }, [rows, wbsQuery, descriptionQuery, statusQuery, percentageQuery]);
+  }, [rows, selectedWbs, descriptionQuery, statusQuery, percentageQuery]);
+
+  const sortedRows = useMemo(() => {
+    const ordered = [...filteredRows].sort((a, b) => {
+      const left = a[sortKey];
+      const right = b[sortKey];
+      if (typeof left === 'string' && typeof right === 'string') return left.localeCompare(right);
+      return Number(left) - Number(right);
+    });
+    return sortDirection === 'asc' ? ordered : ordered.reverse();
+  }, [filteredRows, sortDirection, sortKey]);
 
   const totals = {
     sapActualCost: filteredRows.reduce((sum, row) => sum + (row.sap_actual_cost ?? 0), 0),
@@ -112,159 +134,187 @@ export function DashboardWbsFilter({ rows }: { rows: RevenueRow[] }) {
     remainingRevenue: filteredRows.reduce((sum, row) => sum + row.remaining_revenue, 0),
     remainingCost: filteredRows.reduce((sum, row) => sum + row.remaining_cost, 0),
     forecastMargin: filteredRows.reduce((sum, row) => sum + row.forecast_margin, 0),
-    mtdActualCost: filteredRows.reduce((sum, row) => sum + row.mtd_actual_cost, 0),
     mtdRecognition: filteredRows.reduce((sum, row) => sum + row.mtd_revenue_recognition, 0),
-    ytdActualCost: filteredRows.reduce((sum, row) => sum + row.ytd_actual_cost, 0),
     ytdRecognition: filteredRows.reduce((sum, row) => sum + row.ytd_revenue_recognition, 0),
   };
 
-  const sortedFilteredRows = useMemo(
-    () => filteredRows.slice().sort((a, b) => b.recognized_revenue_to_date - a.recognized_revenue_to_date),
-    [filteredRows],
+  function toggleSort(nextKey: SortKey) {
+    if (sortKey === nextKey) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDirection(nextKey === 'wbs_code' || nextKey === 'wbs_description' ? 'asc' : 'desc');
+  }
+
+  function exportToExcel() {
+    const dataToExport = sortedRows.map((row) => ({
+      'WBS Code': row.wbs_code,
+      'WBS Description': row.wbs_description,
+      'Planned Cost': row.planned_cost,
+      'Actual Cost': row.actual_cost_to_date,
+      'Planned Revenue': row.planned_revenue,
+      'Recognized Revenue': row.recognized_revenue_to_date,
+      'Remaining Revenue': row.remaining_revenue,
+      'Remaining Cost': row.remaining_cost,
+      'POC %': row.poc_percent,
+      'Forecast Margin': row.forecast_margin,
+      'Forecast Margin %': row.forecast_margin_percent,
+      'Status': row.status,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'WBS Analysis');
+    XLSX.writeFile(workbook, `wbs_financial_analysis_${sortedRows[0]?.project_id ?? 'project'}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
+  const headerButton = (label: string, key: SortKey, align: 'left' | 'right' = 'left') => (
+    <button type="button" onClick={() => toggleSort(key)} className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.12em] text-muted hover:text-text transition ${align === 'right' ? 'justify-end w-full' : ''}`}>
+      {label}
+      <ArrowDownUp className="h-3 w-3" />
+    </button>
   );
 
   return (
-    <div className="relative w-full space-y-4 pt-2 lg:pt-0">
-      <div className="absolute right-0 top-0 hidden text-sm text-muted lg:block lg:-translate-y-8">
-        Showing <strong className="text-text">{filteredRows.length}</strong> of <strong className="text-text">{rows.length}</strong> rows
-      </div>
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 lg:flex lg:flex-1 lg:items-end">
-          <label className="block min-w-0 lg:flex-1">
-            <span className="mb-2 block text-sm text-muted">Filter by WBS</span>
-            <input
-              value={wbsQuery}
-              onChange={(e) => setWbsQuery(e.target.value)}
-              placeholder="Type WBS code"
-              className="w-full rounded-xl border border-line/70 bg-panel/70 px-3 py-2 text-sm text-text outline-none placeholder:text-muted/70 focus:border-accent/50"
+    <div className="space-y-6">
+      {/* Filters Pane */}
+      <div className="rounded-xl border border-line/50 bg-panel/30 p-5 shadow-sm">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[1.2fr_1.1fr_1fr_0.85fr_0.85fr_0.85fr_auto] xl:items-end">
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold text-muted">WBS Elements (Multi-select)</span>
+            <MultiWbsSelect
+              selectedValues={selectedWbs}
+              onChange={setSelectedWbs}
+              options={wbsOptions}
+              placeholder="All WBS Elements"
             />
           </label>
-          <label className="block min-w-0 lg:flex-[1.2]">
-            <span className="mb-2 block text-sm text-muted">Filter by WBS Description</span>
+          {poOptions.length > 1 && (
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold text-muted">PO Number</span>
+              <DarkSelect
+                value={selectedPo}
+                onChange={setSelectedPo}
+                options={[{ value: '', label: 'All POs' }, ...poOptions.filter(Boolean).map((po) => ({ value: po, label: po }))]}
+                placeholder="All POs"
+              />
+            </label>
+          )}
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold text-muted">WBS Description</span>
             <DarkSelect value={descriptionQuery} onChange={setDescriptionQuery} options={descriptionChoices} placeholder="All descriptions" />
           </label>
-          <label className="block min-w-0 lg:flex-[0.8]">
-            <span className="mb-2 block text-sm text-muted">Filter by Status</span>
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold text-muted">Status</span>
             <DarkSelect value={statusQuery} onChange={setStatusQuery} options={statusChoices} placeholder="All statuses" />
           </label>
-          <label className="block min-w-0 lg:flex-[0.8]">
-            <span className="mb-2 block text-sm text-muted">Filter by POC</span>
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold text-muted">POC Band</span>
             <DarkSelect value={percentageQuery} onChange={setPercentageQuery} options={percentageChoices} placeholder="All percentages" />
           </label>
           <button
             type="button"
-            onClick={() => {
-              setWbsQuery('');
-              setDescriptionQuery('');
-              setStatusQuery('');
-              setPercentageQuery('');
-            }}
-            className="h-[44px] rounded-xl border border-line/70 px-3 py-2 text-xs font-medium text-text hover:bg-panel2/80"
+            onClick={() => { setSelectedWbs([]); setDescriptionQuery(''); setStatusQuery(''); setPercentageQuery(''); setSelectedPo(''); }}
+            className="rounded-lg border border-line bg-panel px-5 py-2.5 text-xs font-bold text-text hover:bg-panel2 hover:border-line/80 transition shadow-sm h-[38px] xl:h-auto"
           >
-            Clear
+            Reset Filters
           </button>
         </div>
       </div>
-      <div className={`text-sm text-muted lg:hidden ${surfaceCard} px-4 py-3`}>
-        Showing <strong className="text-text">{filteredRows.length}</strong> of <strong className="text-text">{rows.length}</strong> rows
-      </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-7">
+      {/* Metrics Row */}
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
         {[
           { label: 'SAP Actual Cost', value: formatCurrency(totals.sapActualCost) },
           { label: 'PM Simulated Cost', value: formatCurrency(totals.pmSimulatedCost) },
-          { label: 'Management Actual Cost', value: formatCurrency(totals.actualCost) },
-          { label: 'Planned Cost', value: formatCurrency(totals.plannedCost) },
+          { label: 'Management Actual', value: formatCurrency(totals.actualCost) },
           { label: 'Planned Revenue', value: formatCurrency(totals.plannedRevenue) },
           { label: 'Recognized Revenue', value: formatCurrency(totals.recognizedRevenue) },
-          { label: 'Forecast Margin', value: formatCurrency(totals.forecastMargin) },
-          { label: 'MTD Revenue Recognition', value: formatCurrency(totals.mtdRecognition) },
-          { label: 'YTD Revenue Recognition', value: formatCurrency(totals.ytdRecognition) },
-        ].map((item) => (
-          <div key={item.label} className={`px-3 py-3 ${surfaceCard}`}>
-            <div className="text-[11px] uppercase tracking-[0.12em] text-muted">{item.label}</div>
-            <div className="mt-2 text-right text-base font-semibold tracking-tight text-text sm:text-lg">{item.value}</div>
+          { label: 'Remaining Revenue', value: formatCurrency(totals.remainingRevenue) },
+          { label: 'MTD Recognition', value: formatCurrency(totals.mtdRecognition) },
+          { label: 'YTD Recognition', value: formatCurrency(totals.ytdRecognition) },
+        ].map((item, idx) => (
+          <div key={idx} className="rounded-xl border border-line/45 bg-panel p-4 shadow-card">
+            <div className="section-kicker text-muted/70 font-semibold tracking-wider">{item.label}</div>
+            <div className="data-value mt-2.5 text-right text-[14px] font-extrabold text-text tracking-tight">{item.value}</div>
           </div>
         ))}
       </div>
 
-      <div className={`overflow-x-auto ${surfaceCard}`}>
-        <table className="min-w-[1200px] divide-y divide-line/20 text-sm">
-          <thead className="bg-panel2/60 text-left text-muted">
-            <tr>
-              <th className="px-4 py-3">WBS Code</th>
-              <th className="px-4 py-3">WBS Description</th>
-              <th className="px-4 py-3">Planned Cost</th>
-              <th className="px-4 py-3">SAP Actual Cost</th>
-              <th className="px-4 py-3">PM Simulated Cost</th>
-              <th className="px-4 py-3">Management Actual Cost</th>
-              <th className="px-4 py-3">Planned Revenue</th>
-              <th className="px-4 py-3">Recognized Revenue</th>
-              <th className="px-4 py-3">Remaining Revenue</th>
-              <th className="px-4 py-3">Remaining Cost</th>
-              <th className="px-4 py-3">POC %</th>
-              <th className="px-4 py-3">Forecast Margin</th>
-              <th className="px-4 py-3">Forecast Margin %</th>
-              <th className="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line/20 bg-panel/55">
-            {filteredRows.map((row) => (
-              <tr key={row.wbs_code}>
-                <td className="px-4 py-3 text-text">{row.wbs_code}</td>
-                <td className="px-4 py-3 text-muted">{row.wbs_description}</td>
-                <td className="px-4 py-3 text-muted">{formatCurrency(row.planned_cost)}</td>
-                <td className="px-4 py-3 text-muted">{formatCurrency(row.sap_actual_cost ?? 0)}</td>
-                <td className="px-4 py-3 text-muted">{formatCurrency(row.pm_pending_cost ?? 0)}</td>
-                <td className="px-4 py-3 text-muted">{formatCurrency(row.actual_cost_to_date)}</td>
-                <td className="px-4 py-3 text-muted">{formatCurrency(row.planned_revenue)}</td>
-                <td className="px-4 py-3 text-muted">{formatCurrency(row.recognized_revenue_to_date)}</td>
-                <td className="px-4 py-3 text-muted">{formatCurrency(row.remaining_revenue)}</td>
-                <td className="px-4 py-3 text-muted">{formatCurrency(row.remaining_cost)}</td>
-                <td className="px-4 py-3 text-muted">{formatPercent(row.poc_percent)}</td>
-                <td className="px-4 py-3 text-muted">{formatCurrency(row.forecast_margin)}</td>
-                <td className="px-4 py-3 text-muted">{formatPercent(row.forecast_margin_percent)}</td>
-                <td className="px-4 py-3">
-                  <Badge tone={row.poc_percent > 100 ? 'warning' : 'success'}>{row.status}</Badge>
-                </td>
+      {/* WBS Details Table */}
+      <div className={`overflow-hidden border border-line/40 bg-panel/30 shadow-card ${surfaceCard}`}>
+        <div className="border-b border-line/30 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div className="text-sm font-bold text-text">WBS Financial Breakdown</div>
+            <div className="mt-1 text-xs text-muted/75 font-medium font-sans">Filtered WBS performance details. Sorting and status badges match live configuration.</div>
+          </div>
+          <button
+            type="button"
+            onClick={exportToExcel}
+            disabled={!sortedRows.length}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent text-white px-4 py-2 text-xs font-bold shadow hover:bg-accent-hover active:scale-[0.98] transition disabled:opacity-65 shrink-0"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Export to Excel</span>
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-[1320px] w-full text-xs">
+            <thead className="bg-panel2/60 border-b border-line/35 text-left text-muted/80">
+              <tr>
+                <th className="px-4 py-3.5">{headerButton('WBS Code', 'wbs_code')}</th>
+                <th className="px-4 py-3.5">{headerButton('WBS Description', 'wbs_description')}</th>
+                <th className="px-4 py-3.5 text-right">{headerButton('Planned Cost', 'planned_cost', 'right')}</th>
+                <th className="px-4 py-3.5 text-right">{headerButton('Actual Cost', 'actual_cost_to_date', 'right')}</th>
+                <th className="px-4 py-3.5 text-right">{headerButton('Planned Revenue', 'planned_revenue', 'right')}</th>
+                <th className="px-4 py-3.5 text-right">{headerButton('Recognized Rev', 'recognized_revenue_to_date', 'right')}</th>
+                <th className="px-4 py-3.5 text-right">{headerButton('Remaining Rev', 'remaining_revenue', 'right')}</th>
+                <th className="px-4 py-3.5 text-right">{headerButton('Remaining Cost', 'remaining_cost', 'right')}</th>
+                <th className="px-4 py-3.5 text-right">{headerButton('POC %', 'poc_percent', 'right')}</th>
+                <th className="px-4 py-3.5 text-right">{headerButton('Forecast Margin', 'forecast_margin', 'right')}</th>
+                <th className="px-4 py-3.5 text-right">{headerButton('Margin %', 'forecast_margin_percent', 'right')}</th>
+                <th className="px-4 py-3.5 text-center">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-line/30 text-text font-medium">
+              {sortedRows.map((row) => (
+                <tr key={row.wbs_code} className="hover:bg-panel2/40 transition">
+                  <td className="px-4 py-3 font-mono text-accent">{row.wbs_code}</td>
+                  <td className="px-4 py-3 truncate max-w-[280px]" title={row.wbs_description}>{row.wbs_description}</td>
+                  <td className="px-4 py-3 text-right font-mono">{formatCurrency(row.planned_cost)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{formatCurrency(row.actual_cost_to_date)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{formatCurrency(row.planned_revenue)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-success">{formatCurrency(row.recognized_revenue_to_date)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{formatCurrency(row.remaining_revenue)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{formatCurrency(row.remaining_cost)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-success">{formatPercent(row.poc_percent)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{formatCurrency(row.forecast_margin)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{formatPercent(row.forecast_margin_percent)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <Badge tone={getStatusTone(row)}>{row.status}</Badge>
+                  </td>
+                </tr>
+              ))}
+              {!sortedRows.length && (
+                <tr>
+                  <td colSpan={12} className="py-12 text-center text-muted">No WBS records found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {filteredRows.length ? (
-        <div className="grid gap-4 xl:grid-cols-2">
+      {sortedRows.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2">
           <RevenueSplitChart recognized={totals.recognizedRevenue} remaining={Math.max(0, totals.remainingRevenue)} total={totals.plannedRevenue} />
-          <RevenueVsSimulationChart
-            data={filteredRows.map((row) => ({
-              name: row.wbs_code,
-              sap: row.recognized_revenue_to_date,
-              simulated: row.planned_revenue,
-            }))}
-          />
-          <CostComparisonChart
-            data={filteredRows.map((row) => ({
-              name: row.wbs_code,
-              sap: row.actual_cost_to_date,
-              simulated: row.planned_cost,
-            }))}
-          />
-          <ScrollableTopWbsChart
-            data={sortedFilteredRows.map((row) => ({
-              name: row.wbs_code,
-              value: row.recognized_revenue_to_date,
-            }))}
-          />
-          <PendingChart
-            data={filteredRows
-              .filter((row) => row.remaining_cost > 0)
-              .slice(0, 8)
-              .map((row) => ({ name: row.wbs_code, value: row.remaining_cost }))}
-          />
-          <PocChart data={filteredRows.map((row) => ({ name: row.wbs_code, value: row.poc_percent }))} />
+          <PocChart data={sortedRows.map((row) => ({ name: row.wbs_code, value: row.poc_percent }))} />
+          <RevenueVsSimulationChart data={sortedRows.map((row) => ({ name: row.wbs_code, sap: row.sap_earned_revenue ?? 0, simulated: row.recognized_revenue_to_date }))} />
+          <CostComparisonChart data={sortedRows.map((row) => ({ name: row.wbs_code, sap: row.sap_actual_cost ?? 0, simulated: row.actual_cost_to_date }))} />
+          <TopWbsChart data={sortedRows.slice().sort((a, b) => b.recognized_revenue_to_date - a.recognized_revenue_to_date).slice(0, 6).map((row) => ({ name: row.wbs_code, value: row.recognized_revenue_to_date }))} />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

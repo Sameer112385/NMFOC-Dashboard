@@ -3,6 +3,8 @@ import { PMUpdateForm } from '@/components/pm-update-form';
 import { PMUpdatesTable } from '@/components/pm-updates-table';
 import { getDailyUpdates, getProjectManpowerRates, getProjectMaterialMaster, getProjects, getProjectSubcontracts, getRevenueGeneratingRows, getSalesOrderRevenueRows } from '@/lib/data';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PMDailyUpdatesPage() {
   const [projects, revenueWbs, salesOrderRows, updates, manpowerRates, materialMasters, projectSubcontracts] = await Promise.all([
     getProjects(),

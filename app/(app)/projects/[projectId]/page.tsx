@@ -12,7 +12,9 @@ import {
   getProjectWbsMaster,
   getRevenueRows,
 } from '@/lib/data';
-import { getCurrentAppUser } from '@/lib/current-user';
+import { getCurrentAppUser, canEditProjectMaster } from '@/lib/current-user';
+
+export const dynamic = 'force-dynamic';
 
 export default async function ProjectDetailsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
@@ -27,6 +29,8 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
   ) {
     return notFound();
   }
+
+  const canEdit = canEditProjectMaster(currentUser?.role);
 
   const [revenueWbs, manpowerRates, materialMasters, projectSubcontracts, latestUpload, projectWbsMaster, projectCostElements, projectManagers] = await Promise.all([
     getRevenueRows(projectId),
@@ -54,6 +58,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
         projectCostElements={projectCostElements}
         projectManagers={projectManagers}
         latestUpload={latestUpload}
+        canEdit={canEdit}
       />
     </PageShell>
   );

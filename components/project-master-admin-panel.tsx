@@ -7,6 +7,7 @@ import { surfaceCard } from "@/components/ui";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Download, Upload } from "lucide-react";
 import type { Project, ProjectManpowerRate, ProjectMaterialMaster, ProjectWbsMaster, RevenueWBS } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type Props = {
   projects?: Project[];
@@ -17,6 +18,7 @@ type Props = {
   projectId?: string;
   projectName?: string;
   section?: "full" | "manpower" | "material";
+  canEdit?: boolean;
 };
 
 export function ProjectMasterAdminPanel({
@@ -28,6 +30,7 @@ export function ProjectMasterAdminPanel({
   projectId: fixedProjectId,
   projectName,
   section = "full",
+  canEdit = true,
 }: Props) {
   const router = useRouter();
   const [projectId, setProjectId] = useState(fixedProjectId ?? projects[0]?.id ?? "");
@@ -57,6 +60,17 @@ export function ProjectMasterAdminPanel({
     unit_price: "",
   });
 
+  const [localRates, setLocalRates] = useState<ProjectManpowerRate[]>(manpowerRates);
+  const [localMaterials, setLocalMaterials] = useState<ProjectMaterialMaster[]>(materialMasters);
+
+  useEffect(() => {
+    setLocalRates(manpowerRates);
+  }, [manpowerRates]);
+
+  useEffect(() => {
+    setLocalMaterials(materialMasters);
+  }, [materialMasters]);
+
   const projectCostWbs = useMemo(
     () =>
       projectWbsMaster
@@ -75,15 +89,15 @@ export function ProjectMasterAdminPanel({
   );
   const materialWbsOptions = projectCostWbs.length ? projectCostWbs : projectWbs;
   const projectRates = useMemo(
-    () => manpowerRates.filter((item) => item.project_id === projectId),
-    [projectId, manpowerRates],
+    () => localRates.filter((item) => item.project_id === projectId),
+    [projectId, localRates],
   );
   const projectMaterials = useMemo(
     () =>
-      materialMasters
+      localMaterials
         .filter((item) => item.project_id === projectId)
         .sort((a, b) => a.revenue_wbs_code.localeCompare(b.revenue_wbs_code) || a.material_code.localeCompare(b.material_code)),
-    [projectId, materialMasters],
+    [projectId, localMaterials],
   );
   const showProjectSelector = !fixedProjectId;
   const resolvedTab = section === "full" ? activeTab : section;
@@ -93,7 +107,6 @@ export function ProjectMasterAdminPanel({
       setProjectId(fixedProjectId);
     }
   }, [fixedProjectId]);
-
 
   useEffect(() => {
     setMaterialForm((current) => ({
@@ -123,6 +136,9 @@ export function ProjectMasterAdminPanel({
     if (!response.ok) {
       setMessage(payload.error ?? "Unable to save manpower rate.");
       return;
+    }
+    if (payload.row) {
+      setLocalRates((current) => [payload.row, ...current]);
     }
     setRateForm({
       revenue_wbs_code: "",
@@ -157,6 +173,9 @@ export function ProjectMasterAdminPanel({
       setMessage(payload.error ?? "Unable to save material master.");
       return;
     }
+    if (payload.row) {
+      setLocalMaterials((current) => [payload.row, ...current]);
+    }
     setMaterialForm((current) => ({
       revenue_wbs_code: current.revenue_wbs_code,
       material_code: "",
@@ -183,6 +202,7 @@ export function ProjectMasterAdminPanel({
       setMessage(payload.error ?? "Unable to delete manpower rate.");
       return;
     }
+    setLocalRates((current) => current.filter((item) => item.id !== id));
     setMessage("Manpower rate master deleted.");
     router.refresh();
   }
@@ -201,7 +221,86 @@ export function ProjectMasterAdminPanel({
       setMessage(payload.error ?? "Unable to delete material master.");
       return;
     }
+    setLocalMaterials((current) => current.filter((item) => item.id !== id));
     setMessage("Project material master deleted.");
+    router.refresh();
+  }
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingType, setEditingType] = useState<"manpower" | "material" | null>(null);
+  const [editingManpowerForm, setEditingManpowerForm] = useState({
+    work_center: "",
+    cost_center: "",
+    labor_category: "",
+    hourly_rate: "",
+  });
+  const [editingMaterialForm, setEditingMaterialForm] = useState({
+    revenue_wbs_code: "",
+    material_code: "",
+    material_description: "",
+    unit_of_measure: "",
+    planned_quantity: "",
+    unit_price: "",
+  });
+
+  async function updateRate(id: string) {
+    setSaving(true);
+    setMessage("");
+    const response = await fetch("/api/project-masters/manpower", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id,
+        work_center: editingManpowerForm.work_center,
+        cost_center: editingManpowerForm.cost_center,
+        labor_category: editingManpowerForm.labor_category,
+        hourly_rate: Number(editingManpowerForm.hourly_rate || 0),
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok) {
+      setMessage(payload.error ?? "Unable to update manpower rate.");
+      return;
+    }
+    if (payload.row) {
+      setLocalRates((current) => current.map((item) => item.id === id ? payload.row : item));
+    }
+    setEditingId(null);
+    setEditingType(null);
+    setMessage("Manpower rate master updated.");
+    router.refresh();
+  }
+
+  async function updateMaterial(id: string) {
+    setSaving(true);
+    setMessage("");
+    const response = await fetch("/api/project-masters/materials", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id,
+        project_id: projectId,
+        revenue_wbs_code: editingMaterialForm.revenue_wbs_code,
+        material_code: editingMaterialForm.material_code,
+        material_description: editingMaterialForm.material_description,
+        unit_of_measure: editingMaterialForm.unit_of_measure,
+        planned_quantity: Number(editingMaterialForm.planned_quantity || 0),
+        unit_price: Number(editingMaterialForm.unit_price || 0),
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok) {
+      setMessage(payload.error ?? "Unable to update material master.");
+      return;
+    }
+    if (payload.row) {
+      setLocalMaterials((current) => current.map((item) => item.id === id ? payload.row : item));
+    }
+    setEditingId(null);
+    setEditingType(null);
+    setMessage("Project material master updated.");
     router.refresh();
   }
 
@@ -239,17 +338,18 @@ export function ProjectMasterAdminPanel({
   }
 
   return (
-    <div className={`space-y-4 p-5 ${surfaceCard}`}>
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+    <div className={cn("space-y-6 p-6", surfaceCard)}>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between border-b border-line/30 pb-5">
         <div>
-          <h3 className="text-lg font-semibold text-text">Project Cost Masters</h3>
-          <p className="mt-1 text-sm text-muted">
+          <div className="section-kicker text-accent font-bold tracking-[0.12em]">Operational Rate Sheets</div>
+          <h3 className="mt-1 text-lg font-bold text-text">Project Cost Masters</h3>
+          <p className="mt-1 text-xs text-muted/95 font-medium">
             Maintain project manpower rates and planned material master here. PM daily updates will calculate from these masters automatically.
           </p>
         </div>
         {showProjectSelector ? (
-          <div className="min-w-[260px]">
-            <div className="mb-2 text-sm text-muted">Project</div>
+          <div className="min-w-[260px] shrink-0">
+            <div className="mb-1.5 text-xs font-semibold text-muted">Project Selection</div>
             <DarkSelect
               value={projectId}
               onChange={setProjectId}
@@ -258,15 +358,15 @@ export function ProjectMasterAdminPanel({
             />
           </div>
         ) : (
-          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-            <div className="text-xs uppercase tracking-[0.12em] text-muted">Project</div>
-            <div className="mt-1 text-sm font-medium text-text">{projectName ?? "Selected project"}</div>
+          <div className="rounded-xl border border-line bg-panel2/40 px-4 py-3 min-w-[200px] shrink-0">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted">Project</div>
+            <div className="mt-1.5 text-sm font-extrabold text-text leading-none">{projectName ?? "Selected project"}</div>
           </div>
         )}
       </div>
 
       {section === "full" ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5 border-b border-line/30 pb-3">
           {[
             { key: "summary", label: "Project Summary" },
             { key: "manpower", label: "Manpower Master" },
@@ -276,11 +376,12 @@ export function ProjectMasterAdminPanel({
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key as typeof activeTab)}
-              className={
+              className={cn(
+                "rounded-lg px-4 py-2 text-xs font-bold transition-all duration-100",
                 activeTab === tab.key
-                  ? "rounded-xl border border-accent/40 bg-accent/15 px-4 py-2 text-sm font-medium text-text"
-                  : "rounded-xl border border-line/70 bg-panel/40 px-4 py-2 text-sm font-medium text-muted hover:bg-panel2/80 hover:text-text"
-              }
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-muted hover:bg-panel2 hover:text-text",
+              )}
             >
               {tab.label}
             </button>
@@ -289,10 +390,10 @@ export function ProjectMasterAdminPanel({
       ) : null}
 
       {resolvedTab === "summary" ? (
-        <div className={`space-y-4 p-4 ${surfaceCard}`}>
-          <div>
-            <div className="text-sm font-semibold text-text">Project Summary</div>
-            <div className="mt-1 text-xs text-muted">
+        <div className="space-y-4">
+          <div className="border-l-2 border-accent pl-3">
+            <div className="text-sm font-bold text-text">Project Summary</div>
+            <div className="mt-0.5 text-xs text-muted/90 font-medium">
               Quick view of project-linked master readiness for this selected project.
             </div>
           </div>
@@ -317,175 +418,400 @@ export function ProjectMasterAdminPanel({
       ) : null}
 
       {resolvedTab === "manpower" ? (
-        <div className={`space-y-4 p-4 ${surfaceCard}`}>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-line/30 pb-4">
             <div>
-              <div className="text-sm font-semibold text-text">Manpower Rate Master</div>
-              <div className="mt-1 text-xs text-muted">Maintain project labor categories, work center/cost center, and hourly rates.</div>
+              <div className="text-sm font-bold text-text">Manpower Rate Master</div>
+              <div className="mt-0.5 text-xs text-muted/90 font-medium">Maintain project labor categories, work center/cost center, and hourly rates.</div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <a
-                href={projectId ? `/api/project-masters/template?type=manpower&projectId=${projectId}` : "#"}
-                className="inline-flex items-center gap-2 rounded-xl border border-line/70 px-3 py-2 text-xs font-medium text-text hover:bg-panel2/80"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download template
-              </a>
-              <input
-                ref={manpowerFileRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={(e) => setSelectedManpowerFile(e.target.files?.[0] ?? null)}
-              />
-              <button
-                type="button"
-                onClick={() => manpowerFileRef.current?.click()}
-                disabled={!projectId}
-                className={secondaryButtonClass}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Upload className="h-3.5 w-3.5" />
-                  Choose file
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => uploadBulk("manpower", selectedManpowerFile)}
-                disabled={!projectId || !selectedManpowerFile || uploadingType === "manpower"}
-                className={secondaryButtonClass}
-              >
-                {uploadingType === "manpower" ? "Uploading..." : "Upload file"}
-              </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {canEdit && (
+                <>
+                  <a
+                    href={projectId ? `/api/project-masters/template?type=manpower&projectId=${projectId}` : "#"}
+                    className="inline-flex items-center gap-2 rounded-lg border border-line bg-panel/60 px-3 py-2 text-xs font-semibold text-text hover:bg-panel2/80 transition"
+                  >
+                    <Download className="h-3.5 w-3.5 text-muted" />
+                    <span>Template</span>
+                  </a>
+                  <input
+                    ref={manpowerFileRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={(e) => setSelectedManpowerFile(e.target.files?.[0] ?? null)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => manpowerFileRef.current?.click()}
+                    disabled={!projectId}
+                    className={secondaryButtonClass}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Upload className="h-3.5 w-3.5 text-muted" />
+                      {selectedManpowerFile ? "Change File" : "Choose Excel"}
+                    </span>
+                  </button>
+                  {selectedManpowerFile && (
+                    <button
+                      type="button"
+                      onClick={() => uploadBulk("manpower", selectedManpowerFile)}
+                      disabled={!projectId || uploadingType === "manpower"}
+                      className="rounded-lg bg-accent text-white px-4 py-2 text-xs font-semibold shadow hover:bg-accent-hover transition"
+                    >
+                      {uploadingType === "manpower" ? "Uploading..." : "Upload"}
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
-          <div className="text-xs text-muted">
-            {selectedManpowerFile ? `Selected file: ${selectedManpowerFile.name}` : "No file selected for manpower bulk upload."}
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <input value={rateForm.work_center} onChange={(e) => setRateForm((c) => ({ ...c, work_center: e.target.value }))} placeholder="Work center" className={inputClass} />
-            <input value={rateForm.cost_center} onChange={(e) => setRateForm((c) => ({ ...c, cost_center: e.target.value }))} placeholder="Cost center" className={inputClass} />
-            <input value={rateForm.labor_category} onChange={(e) => setRateForm((c) => ({ ...c, labor_category: e.target.value }))} placeholder="Labor category" className={inputClass} />
-            <input value={rateForm.hourly_rate} onChange={(e) => setRateForm((c) => ({ ...c, hourly_rate: e.target.value }))} placeholder="Hourly rate" type="number" step="0.01" className={inputClass} />
-          </div>
-          <div className="flex items-center gap-3">
-            <button type="button" disabled={saving || !projectId || !rateForm.labor_category || !rateForm.hourly_rate} onClick={saveRate} className={primaryButtonClass}>Save manpower rate</button>
-          </div>
-          <div className="space-y-2">
-            {projectRates.length ? projectRates.map((rate) => (
-              <div key={rate.id} className="flex items-center justify-between gap-3 rounded-xl border border-line/70 bg-panel/40 px-4 py-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-text">{rate.labor_category}</div>
-                  <div className="text-xs text-muted">
-                    {[rate.work_center, rate.cost_center].filter(Boolean).join(" | ") || "No work / cost center linked"}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm font-semibold text-text">{formatCurrency(rate.hourly_rate)}</div>
-                  <button type="button" onClick={() => deleteRate(rate.id)} className={dangerButtonClass}>Delete</button>
-                </div>
+
+          {selectedManpowerFile && (
+            <div className="text-xs font-semibold text-accent bg-accent/5 border border-accent/10 px-3.5 py-2.5 rounded-lg">
+              Selected file: <span className="font-mono">{selectedManpowerFile.name}</span>
+            </div>
+          )}
+
+          <fieldset disabled={!canEdit} className="bg-panel2/10 border border-line p-5 rounded-xl space-y-4">
+            <div className="text-xs font-bold text-text uppercase tracking-wider">Add Manpower Rate</div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <input value={rateForm.work_center} onChange={(e) => setRateForm((c) => ({ ...c, work_center: e.target.value }))} placeholder="Work center" className={inputClass} />
+              <input value={rateForm.cost_center} onChange={(e) => setRateForm((c) => ({ ...c, cost_center: e.target.value }))} placeholder="Cost center" className={inputClass} />
+              <input value={rateForm.labor_category} onChange={(e) => setRateForm((c) => ({ ...c, labor_category: e.target.value }))} placeholder="Labor category (e.g. Supervisor)" className={inputClass} />
+              <input value={rateForm.hourly_rate} onChange={(e) => setRateForm((c) => ({ ...c, hourly_rate: e.target.value }))} placeholder="Hourly rate (SAR/hr)" type="number" step="0.01" className={inputClass} />
+            </div>
+            {canEdit && (
+              <div className="flex items-center justify-end">
+                <button type="button" disabled={saving || !projectId || !rateForm.labor_category || !rateForm.hourly_rate} onClick={saveRate} className={primaryButtonClass}>
+                  Save manpower rate
+                </button>
               </div>
-            )) : <div className="text-sm text-muted">No manpower rates maintained for this project yet.</div>}
+            )}
+          </fieldset>
+
+          <div className="space-y-2">
+            <div className="text-xs font-bold text-muted uppercase tracking-wider pb-1">Current Manpower Rates (Double click to edit)</div>
+            {projectRates.length ? projectRates.map((rate) => {
+              const isEditing = editingId === rate.id && editingType === "manpower";
+              return (
+                <div
+                  key={rate.id}
+                  onDoubleClick={() => {
+                    if (!canEdit) return;
+                    setEditingId(rate.id ?? null);
+                    setEditingType("manpower");
+                    setEditingManpowerForm({
+                      work_center: rate.work_center ?? "",
+                      cost_center: rate.cost_center ?? "",
+                      labor_category: rate.labor_category ?? "",
+                      hourly_rate: String(rate.hourly_rate ?? ""),
+                    });
+                  }}
+                  className="rounded-xl border border-line bg-panel2/20 px-4 py-3 hover:border-line-hover transition"
+                >
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <input
+                          value={editingManpowerForm.labor_category}
+                          onChange={(e) => setEditingManpowerForm((c) => ({ ...c, labor_category: e.target.value }))}
+                          placeholder="Labor category"
+                          className={inputClass}
+                        />
+                        <input
+                          value={editingManpowerForm.work_center}
+                          onChange={(e) => setEditingManpowerForm((c) => ({ ...c, work_center: e.target.value }))}
+                          placeholder="Work center"
+                          className={inputClass}
+                        />
+                        <input
+                          value={editingManpowerForm.cost_center}
+                          onChange={(e) => setEditingManpowerForm((c) => ({ ...c, cost_center: e.target.value }))}
+                          placeholder="Cost center"
+                          className={inputClass}
+                        />
+                        <input
+                          value={editingManpowerForm.hourly_rate}
+                          onChange={(e) => setEditingManpowerForm((c) => ({ ...c, hourly_rate: e.target.value }))}
+                          placeholder="Hourly rate"
+                          type="number"
+                          step="0.01"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(null);
+                            setEditingType(null);
+                          }}
+                          className={secondaryButtonClass}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving || !editingManpowerForm.labor_category || !editingManpowerForm.hourly_rate}
+                          onClick={() => updateRate(rate.id!)}
+                          className={primaryButtonClass}
+                        >
+                          {saving ? "Saving..." : "Save changes"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-text">{rate.labor_category}</div>
+                        <div className="text-[11px] font-medium text-muted mt-0.5">
+                          {[rate.work_center, rate.cost_center].filter(Boolean).join(" | ") || "No work / cost center linked"}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <div className="text-xs font-bold text-text tabular-nums">{formatCurrency(rate.hourly_rate)}</div>
+                        {canEdit && (
+                          <button type="button" onClick={() => deleteRate(rate.id)} className={dangerButtonClass}>Delete</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }) : <div className="text-xs font-medium text-muted bg-panel/30 border border-dashed border-line p-4 text-center rounded-xl">No manpower rates maintained for this project yet.</div>}
           </div>
         </div>
       ) : null}
 
       {resolvedTab === "material" ? (
-        <div className={`space-y-4 p-4 ${surfaceCard}`}>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-line/30 pb-4">
             <div>
-              <div className="text-sm font-semibold text-text">Project Material Master</div>
-              <div className="mt-1 text-xs text-muted">Maintain planned materials by revenue WBS, including planned quantity and unit price.</div>
+              <div className="text-sm font-bold text-text">Project Material Master</div>
+              <div className="mt-0.5 text-xs text-muted/90 font-medium">Maintain planned materials by revenue WBS, including planned quantity and unit price.</div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <a
-                href={projectId ? `/api/project-masters/template?type=material&projectId=${projectId}` : "#"}
-                className="inline-flex items-center gap-2 rounded-xl border border-line/70 px-3 py-2 text-xs font-medium text-text hover:bg-panel2/80"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download template
-              </a>
-              <input
-                ref={materialFileRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={(e) => setSelectedMaterialFile(e.target.files?.[0] ?? null)}
-              />
-              <button
-                type="button"
-                onClick={() => materialFileRef.current?.click()}
-                disabled={!projectId}
-                className={secondaryButtonClass}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Upload className="h-3.5 w-3.5" />
-                  Choose file
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => uploadBulk("material", selectedMaterialFile)}
-                disabled={!projectId || !selectedMaterialFile || uploadingType === "material"}
-                className={secondaryButtonClass}
-              >
-                {uploadingType === "material" ? "Uploading..." : "Upload file"}
-              </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {canEdit && (
+                <>
+                  <a
+                    href={projectId ? `/api/project-masters/template?type=material&projectId=${projectId}` : "#"}
+                    className="inline-flex items-center gap-2 rounded-lg border border-line bg-panel/60 px-3 py-2 text-xs font-semibold text-text hover:bg-panel2/80 transition"
+                  >
+                    <Download className="h-3.5 w-3.5 text-muted" />
+                    <span>Template</span>
+                  </a>
+                  <input
+                    ref={materialFileRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={(e) => setSelectedMaterialFile(e.target.files?.[0] ?? null)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => materialFileRef.current?.click()}
+                    disabled={!projectId}
+                    className={secondaryButtonClass}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Upload className="h-3.5 w-3.5 text-muted" />
+                      {selectedMaterialFile ? "Change File" : "Choose Excel"}
+                    </span>
+                  </button>
+                  {selectedMaterialFile && (
+                    <button
+                      type="button"
+                      onClick={() => uploadBulk("material", selectedMaterialFile)}
+                      disabled={!projectId || uploadingType === "material"}
+                      className="rounded-lg bg-accent text-white px-4 py-2 text-xs font-semibold shadow hover:bg-accent-hover transition"
+                    >
+                      {uploadingType === "material" ? "Uploading..." : "Upload"}
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
-          <div className="text-xs text-muted">
-            {selectedMaterialFile ? `Selected file: ${selectedMaterialFile.name}` : "No file selected for material bulk upload."}
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <DarkSelect
-              value={materialForm.revenue_wbs_code}
-              onChange={(value) => setMaterialForm((c) => ({ ...c, revenue_wbs_code: value }))}
-              options={materialWbsOptions.map((row) => ({ value: row.wbs_code, label: `${row.wbs_code} - ${row.wbs_description}` }))}
-              placeholder="Select revenue WBS"
-            />
-            <input value={materialForm.material_code} onChange={(e) => setMaterialForm((c) => ({ ...c, material_code: e.target.value }))} placeholder="Material code" className={inputClass} />
-            <input value={materialForm.material_description} onChange={(e) => setMaterialForm((c) => ({ ...c, material_description: e.target.value }))} placeholder="Material description" className={inputClass} />
-            <input value={materialForm.unit_of_measure} onChange={(e) => setMaterialForm((c) => ({ ...c, unit_of_measure: e.target.value }))} placeholder="Unit of measure" className={inputClass} />
-            <input value={materialForm.planned_quantity} onChange={(e) => setMaterialForm((c) => ({ ...c, planned_quantity: e.target.value }))} placeholder="Planned quantity" type="number" step="0.01" className={inputClass} />
-            <input value={materialForm.unit_price} onChange={(e) => setMaterialForm((c) => ({ ...c, unit_price: e.target.value }))} placeholder="Unit price" type="number" step="0.01" className={inputClass} />
-          </div>
-          <div className="flex items-center gap-3">
-            <button type="button" disabled={saving || !projectId || !materialForm.revenue_wbs_code} onClick={saveMaterial} className={primaryButtonClass}>Save material</button>
-          </div>
-          <div className="space-y-2">
-            {projectMaterials.length ? projectMaterials.map((material) => (
-              <div key={material.id} className="flex items-center justify-between gap-3 rounded-xl border border-line/70 bg-panel/40 px-4 py-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-text">{material.material_code} - {material.material_description}</div>
-                  <div className="text-xs text-muted">
-                    {material.revenue_wbs_code} | {material.unit_of_measure || "-"} | Planned Qty {formatNumber(material.planned_quantity)}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm font-semibold text-text">{formatCurrency(material.unit_price)}</div>
-                  <button type="button" onClick={() => deleteMaterial(material.id)} className={dangerButtonClass}>Delete</button>
-                </div>
+
+          {selectedMaterialFile && (
+            <div className="text-xs font-semibold text-accent bg-accent/5 border border-accent/10 px-3.5 py-2.5 rounded-lg">
+              Selected file: <span className="font-mono">{selectedMaterialFile.name}</span>
+            </div>
+          )}
+
+          <fieldset disabled={!canEdit} className="bg-panel2/10 border border-line p-5 rounded-xl space-y-4">
+            <div className="text-xs font-bold text-text uppercase tracking-wider">Add Material Master Entry</div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="flex flex-col gap-1">
+                <div className="text-[10px] font-bold text-muted uppercase tracking-wider">WBS Element</div>
+                <DarkSelect
+                  value={materialForm.revenue_wbs_code}
+                  onChange={(value) => setMaterialForm((c) => ({ ...c, revenue_wbs_code: value }))}
+                  options={materialWbsOptions.map((row) => ({ value: row.wbs_code, label: `${row.wbs_code} - ${row.wbs_description}` }))}
+                  placeholder="Select WBS"
+                />
               </div>
-            )) : <div className="text-sm text-muted">No project material master maintained for this project yet.</div>}
+              <div className="flex flex-col gap-1 justify-end">
+                <input value={materialForm.material_code} onChange={(e) => setMaterialForm((c) => ({ ...c, material_code: e.target.value }))} placeholder="Material code" className={inputClass} />
+              </div>
+              <div className="flex flex-col gap-1 justify-end">
+                <input value={materialForm.material_description} onChange={(e) => setMaterialForm((c) => ({ ...c, material_description: e.target.value }))} placeholder="Material description" className={inputClass} />
+              </div>
+              <input value={materialForm.unit_of_measure} onChange={(e) => setMaterialForm((c) => ({ ...c, unit_of_measure: e.target.value }))} placeholder="Unit of measure (e.g. Meters)" className={inputClass} />
+              <input value={materialForm.planned_quantity} onChange={(e) => setMaterialForm((c) => ({ ...c, planned_quantity: e.target.value }))} placeholder="Planned quantity" type="number" step="0.01" className={inputClass} />
+              <input value={materialForm.unit_price} onChange={(e) => setMaterialForm((c) => ({ ...c, unit_price: e.target.value }))} placeholder="Unit price (SAR)" type="number" step="0.01" className={inputClass} />
+            </div>
+            {canEdit && (
+              <div className="flex items-center justify-end">
+                <button type="button" disabled={saving || !projectId || !materialForm.revenue_wbs_code} onClick={saveMaterial} className={primaryButtonClass}>
+                  Save material
+                </button>
+              </div>
+            )}
+          </fieldset>
+
+          <div className="space-y-2">
+            <div className="text-xs font-bold text-muted uppercase tracking-wider pb-1">Current Material Master (Double click to edit)</div>
+            {projectMaterials.length ? projectMaterials.map((material) => {
+              const isEditing = editingId === material.id && editingType === "material";
+              return (
+                <div
+                  key={material.id}
+                  onDoubleClick={() => {
+                    if (!canEdit) return;
+                    setEditingId(material.id ?? null);
+                    setEditingType("material");
+                    setEditingMaterialForm({
+                      revenue_wbs_code: material.revenue_wbs_code ?? "",
+                      material_code: material.material_code ?? "",
+                      material_description: material.material_description ?? "",
+                      unit_of_measure: material.unit_of_measure ?? "",
+                      planned_quantity: String(material.planned_quantity ?? ""),
+                      unit_price: String(material.unit_price ?? ""),
+                    });
+                  }}
+                  className="rounded-xl border border-line bg-panel2/20 px-4 py-3 hover:border-line-hover transition"
+                >
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-[10px] font-bold text-muted uppercase tracking-wider">WBS Element</div>
+                          <DarkSelect
+                            value={editingMaterialForm.revenue_wbs_code}
+                            onChange={(value) => setEditingMaterialForm((c) => ({ ...c, revenue_wbs_code: value }))}
+                            options={materialWbsOptions.map((row) => ({ value: row.wbs_code, label: `${row.wbs_code} - ${row.wbs_description}` }))}
+                            placeholder="Select WBS"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1 justify-end">
+                          <input
+                            value={editingMaterialForm.material_code}
+                            onChange={(e) => setEditingMaterialForm((c) => ({ ...c, material_code: e.target.value }))}
+                            placeholder="Material code"
+                            className={inputClass}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1 justify-end">
+                          <input
+                            value={editingMaterialForm.material_description}
+                            onChange={(e) => setEditingMaterialForm((c) => ({ ...c, material_description: e.target.value }))}
+                            placeholder="Material description"
+                            className={inputClass}
+                          />
+                        </div>
+                        <input
+                          value={editingMaterialForm.unit_of_measure}
+                          onChange={(e) => setEditingMaterialForm((c) => ({ ...c, unit_of_measure: e.target.value }))}
+                          placeholder="Unit of measure"
+                          className={inputClass}
+                        />
+                        <input
+                          value={editingMaterialForm.planned_quantity}
+                          onChange={(e) => setEditingMaterialForm((c) => ({ ...c, planned_quantity: e.target.value }))}
+                          placeholder="Planned quantity"
+                          type="number"
+                          step="0.01"
+                          className={inputClass}
+                        />
+                        <input
+                          value={editingMaterialForm.unit_price}
+                          onChange={(e) => setEditingMaterialForm((c) => ({ ...c, unit_price: e.target.value }))}
+                          placeholder="Unit price"
+                          type="number"
+                          step="0.01"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(null);
+                            setEditingType(null);
+                          }}
+                          className={secondaryButtonClass}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving || !editingMaterialForm.revenue_wbs_code || !editingMaterialForm.material_code || !editingMaterialForm.material_description}
+                          onClick={() => updateMaterial(material.id!)}
+                          className={primaryButtonClass}
+                        >
+                          {saving ? "Saving..." : "Save changes"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-text">{material.material_code} - {material.material_description}</div>
+                        <div className="text-[11px] font-medium text-muted mt-0.5">
+                          <span className="font-mono text-accent">{material.revenue_wbs_code}</span>
+                          <span className="mx-2 text-line">|</span>
+                          <span>UoM: {material.unit_of_measure || "-"}</span>
+                          <span className="mx-2 text-line">|</span>
+                          <span>Planned Qty: <span className="font-bold text-text tabular-nums">{formatNumber(material.planned_quantity)}</span></span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <div className="text-xs font-bold text-text tabular-nums">{formatCurrency(material.unit_price)}</div>
+                        {canEdit && (
+                          <button type="button" onClick={() => deleteMaterial(material.id)} className={dangerButtonClass}>Delete</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }) : <div className="text-xs font-medium text-muted bg-panel/30 border border-dashed border-line p-4 text-center rounded-xl">No project material master maintained for this project yet.</div>}
           </div>
         </div>
       ) : null}
 
-      {message ? <div className="text-sm text-muted">{message}</div> : null}
+      {message ? (
+        <div className="text-xs font-semibold text-accent/90 bg-accent/5 border border-accent/10 px-4 py-3 rounded-lg mt-3">
+          {message}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-line/70 bg-panel/40 px-4 py-3">
-      <div className="text-[11px] uppercase tracking-[0.12em] text-muted">{label}</div>
-      <div className="mt-2 text-sm font-semibold text-text">{value}</div>
+    <div className="rounded-xl border border-line bg-panel/40 px-4 py-3.5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm">
+      <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted">{label}</div>
+      <div className="mt-1.5 text-sm font-extrabold text-text leading-none">{value}</div>
     </div>
   );
 }
 
-const inputClass = "rounded-xl border border-line/70 bg-panel/70 px-4 py-3 text-sm text-text";
-const primaryButtonClass = "rounded-xl bg-accent px-4 py-3 text-sm font-medium text-bg disabled:opacity-60";
-const secondaryButtonClass = "rounded-xl border border-line/70 px-3 py-2 text-xs font-medium text-text hover:bg-panel2/80 disabled:opacity-60";
-const dangerButtonClass = "rounded-xl border border-danger/30 px-3 py-2 text-xs font-medium text-danger hover:bg-danger/10";
+const inputClass = "rounded-lg border border-line bg-panel px-3 py-2.5 text-xs text-text outline-none focus:border-accent focus:ring-1 focus:ring-accent transition shadow-sm w-full";
+const primaryButtonClass = "rounded-lg bg-accent text-white px-4 py-2.5 text-xs font-semibold shadow hover:bg-accent-hover active:scale-[0.98] transition disabled:opacity-60";
+const secondaryButtonClass = "rounded-lg border border-line bg-panel/60 px-3.5 py-2 text-xs font-semibold text-text hover:bg-panel2/80 active:scale-[0.98] transition disabled:opacity-60";
+const dangerButtonClass = "rounded-lg border border-danger/30 px-3 py-1.5 text-[11px] font-semibold text-danger hover:bg-danger/10 transition";
+

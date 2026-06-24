@@ -18,6 +18,7 @@ type Props = {
   projectCostElements: ProjectCostElementControl[];
   projectManagers: UserProfile[];
   latestUpload: string | null;
+  canEdit: boolean;
 };
 
 const tabs = [
@@ -39,23 +40,33 @@ export function ProjectAdminWorkspace({
   projectCostElements,
   projectManagers,
   latestUpload,
+  canEdit,
 }: Props) {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]["key"]>("summary");
 
   return (
-    <div className="space-y-4">
-      <div className="sticky top-0 z-10 rounded-2xl border border-white/10 bg-panel/90 p-3 shadow-lg backdrop-blur">
-        <div className="flex flex-wrap gap-2">
+    <div className="space-y-6">
+      {/* Read-only access banner */}
+      {!canEdit && (
+        <div className="flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning/5 px-5 py-3.5 text-sm font-semibold text-warning">
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+          </span>
+          <span>View Only — You do not have permission to edit project master data. Contact an Admin or Cost Controller.</span>
+        </div>
+      )}
+      <div className="sticky top-[74px] z-10 rounded-xl border border-line bg-panel/85 p-2 shadow-sm backdrop-blur">
+        <div className="flex flex-wrap gap-1.5">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                "rounded-lg px-4 py-2 text-xs font-bold transition-all duration-100",
                 activeTab === tab.key
-                  ? "border-accent/40 bg-accent/15 text-text"
-                  : "border-line/70 bg-panel/40 text-muted hover:bg-panel2/80 hover:text-text",
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-muted hover:bg-panel2 hover:text-text",
               )}
             >
               {tab.label}
@@ -74,6 +85,7 @@ export function ProjectAdminWorkspace({
           projectSubcontracts={projectSubcontracts}
           projectManagers={projectManagers}
           section="summary"
+          canEdit={canEdit}
         />
       ) : null}
 
@@ -86,6 +98,7 @@ export function ProjectAdminWorkspace({
           manpowerRates={manpowerRates}
           materialMasters={materialMasters}
           section="manpower"
+          canEdit={canEdit}
         />
       ) : null}
 
@@ -93,6 +106,7 @@ export function ProjectAdminWorkspace({
         <ProjectWbsMasterPanel
           projectId={project.id}
           rows={projectWbsMaster}
+          canEdit={canEdit}
         />
       ) : null}
 
@@ -100,6 +114,7 @@ export function ProjectAdminWorkspace({
         <ProjectCostElementControlPanel
           projectId={project.id}
           rows={projectCostElements}
+          canEdit={canEdit}
         />
       ) : null}
 
@@ -112,6 +127,7 @@ export function ProjectAdminWorkspace({
           manpowerRates={manpowerRates}
           materialMasters={materialMasters}
           section="material"
+          canEdit={canEdit}
         />
       ) : null}
 
@@ -125,8 +141,10 @@ export function ProjectAdminWorkspace({
           projectSubcontracts={projectSubcontracts}
           projectManagers={projectManagers}
           section="subcontracts"
+          canEdit={canEdit}
         />
       ) : null}
     </div>
   );
 }
+

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createProjectManpowerRate, deleteProjectManpowerRate } from '@/lib/data';
+import { createProjectManpowerRate, deleteProjectManpowerRate, updateProjectManpowerRate } from '@/lib/data';
 
 export async function POST(request: Request) {
   try {
@@ -50,3 +50,28 @@ export async function DELETE(request: Request) {
     );
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const payload = await request.json();
+    const id = String(payload.id ?? '').trim();
+    if (!id) {
+      return NextResponse.json({ error: 'Rate id is required.' }, { status: 400 });
+    }
+    const patch: any = {};
+    if (payload.revenue_wbs_code !== undefined) patch.revenue_wbs_code = String(payload.revenue_wbs_code).trim();
+    if (payload.labor_category !== undefined) patch.labor_category = String(payload.labor_category).trim();
+    if (payload.work_center !== undefined) patch.work_center = String(payload.work_center).trim();
+    if (payload.cost_center !== undefined) patch.cost_center = String(payload.cost_center).trim();
+    if (payload.hourly_rate !== undefined) patch.hourly_rate = Number(payload.hourly_rate);
+
+    const row = await updateProjectManpowerRate(id, patch);
+    return NextResponse.json({ ok: true, row });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unable to update manpower rate master.' },
+      { status: 500 },
+    );
+  }
+}
+

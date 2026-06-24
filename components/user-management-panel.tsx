@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { Badge, surfaceCard } from '@/components/ui';
+import { cn } from '@/lib/utils';
 
 type User = {
   id: string;
@@ -37,14 +38,12 @@ export function UserManagementPanel() {
   async function fetchSettingsAndUsers() {
     try {
       setFetchLoading(true);
-      // Fetch Supabase configuration status
       const configRes = await fetch('/api/settings/supabase');
       if (configRes.ok) {
         const configData = await configRes.json();
         setStatus(configData);
       }
 
-      // Fetch users
       const usersRes = await fetch('/api/admin/users');
       if (usersRes.ok) {
         const usersData = await usersRes.json();
@@ -91,7 +90,7 @@ export function UserManagementPanel() {
     setMessage('');
     setErrorMsg('');
 
-      if (!editingUser) {
+    if (!editingUser) {
       if (!email || !password || !role) {
         setErrorMsg('Email, password, and role are required.');
         setLoading(false);
@@ -137,8 +136,6 @@ export function UserManagementPanel() {
 
       setMessage(editingUser ? 'User updated successfully!' : `User created successfully! Role: ${role}`);
       cancelEdit();
-      
-      // Refresh user list
       fetchSettingsAndUsers();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : `Unable to ${editingUser ? 'update' : 'create'} user.`);
@@ -177,11 +174,12 @@ export function UserManagementPanel() {
   const isServiceRoleKeyMissing = isSupabaseConfigured && !status?.hasServiceRoleKey;
 
   return (
-    <div className={`p-5 ${surfaceCard} xl:col-span-2`}>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-4">
+    <div className={cn("p-6 xl:col-span-2", surfaceCard)}>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line/30 pb-5">
         <div>
-          <h3 className="text-lg font-semibold text-text">User Management</h3>
-          <p className="mt-1 text-sm text-muted">
+          <div className="section-kicker text-accent font-bold tracking-[0.12em]">Administration Workspace</div>
+          <h3 className="mt-1 text-lg font-bold text-text">User Management</h3>
+          <p className="mt-1 text-xs text-muted/90 font-medium">
             Create users, assign role-based permissions (Admin, Cost Controller, Project Manager, Viewer), and manage credentials.
           </p>
         </div>
@@ -193,8 +191,8 @@ export function UserManagementPanel() {
       </div>
 
       {isServiceRoleKeyMissing && (
-        <div className="mt-4 rounded-2xl border border-warning/20 bg-warning/5 p-4 text-xs text-warning leading-relaxed">
-          <b className="text-text">Missing Admin Permissions:</b> Supabase connection is active, but the <b className="text-text">Service Role Key</b> has not been saved.
+        <div className="mt-4 rounded-lg border border-warning/20 bg-warning/5 p-4 text-xs text-warning leading-relaxed font-medium">
+          <b className="text-text font-bold">Missing Admin Permissions:</b> Supabase connection is active, but the <b className="text-text font-bold">Service Role Key</b> has not been saved.
           Creating and listing auth users programmatically requires administrative authorization.
           Please enter the service role key in the connection panel above to unlock user management features.
         </div>
@@ -202,9 +200,9 @@ export function UserManagementPanel() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         {/* Create / Edit User Form */}
-        <form onSubmit={handleCreateOrUpdateUser} className="space-y-4 rounded-2xl border border-white/5 bg-white/[0.01] p-5 lg:col-span-1">
-          <h4 className="text-sm font-semibold uppercase tracking-wider text-text">
-            {editingUser ? 'Edit User' : 'Create User'}
+        <form onSubmit={handleCreateOrUpdateUser} className="space-y-4 rounded-xl border border-line bg-panel2/10 p-5 lg:col-span-1">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-text pb-1 border-b border-line/30">
+            {editingUser ? 'Edit User Profile' : 'Create New User'}
           </h4>
           
           <label className="block">
@@ -214,18 +212,18 @@ export function UserManagementPanel() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Abdullah Ahmed"
-              className="w-full rounded-xl border border-line/70 bg-panel/70 px-4 py-2.5 text-sm text-text outline-none placeholder:text-muted/40 focus:border-accent/50"
+              className={inputClass}
             />
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-xs font-semibold text-muted">Phone</span>
+            <span className="mb-1.5 block text-xs font-semibold text-muted">Phone Number</span>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+966..."
-              className="w-full rounded-xl border border-line/70 bg-panel/70 px-4 py-2.5 text-sm text-text outline-none placeholder:text-muted/40 focus:border-accent/50"
+              className={inputClass}
             />
           </label>
 
@@ -240,7 +238,7 @@ export function UserManagementPanel() {
               placeholder="abdullah@detasad.com"
               required={!editingUser}
               disabled={Boolean(editingUser)}
-              className="w-full rounded-xl border border-line/70 bg-panel/70 px-4 py-2.5 text-sm text-text outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={cn(inputClass, "disabled:opacity-50 disabled:cursor-not-allowed")}
             />
           </label>
 
@@ -254,7 +252,7 @@ export function UserManagementPanel() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder={editingUser ? 'Leave blank to keep unchanged' : '••••••••'}
               required={!editingUser}
-              className="w-full rounded-xl border border-line/70 bg-panel/70 px-4 py-2.5 text-sm text-text outline-none placeholder:text-muted/40 focus:border-accent/50"
+              className={inputClass}
             />
           </label>
 
@@ -263,7 +261,7 @@ export function UserManagementPanel() {
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="w-full rounded-xl border border-line/70 bg-panel/70 px-4 py-2.5 text-sm text-text outline-none focus:border-accent/50 [&>option]:bg-bg [&>option]:text-text"
+              className={selectClass}
             >
               <option value="Admin">Admin</option>
               <option value="Cost Controller">Cost Controller</option>
@@ -272,11 +270,11 @@ export function UserManagementPanel() {
             </select>
           </label>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 pt-2">
             <button
               type="submit"
               disabled={loading || (isSupabaseConfigured && isServiceRoleKeyMissing)}
-              className="flex-1 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-bg transition hover:opacity-90 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-accent text-white px-4 py-2.5 text-xs font-semibold shadow hover:bg-accent-hover active:scale-[0.98] transition disabled:opacity-50 disabled:hover:bg-accent"
             >
               {loading ? (editingUser ? 'Saving...' : 'Creating...') : (editingUser ? 'Save Changes' : 'Create User')}
             </button>
@@ -284,46 +282,46 @@ export function UserManagementPanel() {
               <button
                 type="button"
                 onClick={cancelEdit}
-                className="rounded-xl border border-line bg-panel px-4 py-3 text-sm font-semibold text-text transition hover:bg-white/[0.02]"
+                className="rounded-lg border border-line bg-panel/60 px-4 py-2.5 text-xs font-semibold text-text hover:bg-panel2/80 transition"
               >
                 Cancel
               </button>
             )}
           </div>
 
-          {message && <p className="text-center text-xs text-success bg-success/5 py-2 px-3 rounded-lg">{message}</p>}
-          {errorMsg && <p className="text-center text-xs text-danger bg-danger/5 py-2 px-3 rounded-lg">{errorMsg}</p>}
+          {message && <p className="text-center text-xs font-semibold text-success bg-success/5 border border-success/15 py-2 px-3 rounded-lg mt-2">{message}</p>}
+          {errorMsg && <p className="text-center text-xs font-semibold text-danger bg-danger/5 border border-danger/15 py-2 px-3 rounded-lg mt-2">{errorMsg}</p>}
         </form>
 
         {/* Users List Table */}
         <div className="lg:col-span-2 space-y-4">
-          <h4 className="text-sm font-semibold uppercase tracking-wider text-text">Active Users</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-muted">Active System Users</h4>
           {fetchLoading ? (
-            <div className="text-center py-10 text-sm text-muted">Loading users...</div>
+            <div className="text-center py-12 text-xs font-semibold text-muted">Loading user accounts...</div>
           ) : users.length === 0 ? (
-            <div className="text-center py-10 text-sm text-muted border border-dashed border-white/10 rounded-2xl">
-              No users found. Create your first user on the left.
+            <div className="text-center py-12 text-xs font-semibold text-muted border border-dashed border-line rounded-xl">
+              No users found. Create your first user profile using the form.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-white/5 bg-white/[0.01]">
-              <table className="w-full border-collapse text-left text-sm text-text">
+            <div className="overflow-x-auto rounded-xl border border-line bg-panel2/10 shadow-sm">
+              <table className="w-full border-collapse text-left text-xs text-text">
                 <thead>
-                  <tr className="border-b border-white/5 bg-white/[0.02] text-xs font-semibold uppercase tracking-wider text-muted">
-                    <th className="px-4 py-3">User / Email</th>
-                    <th className="px-4 py-3">Role</th>
-                    <th className="px-4 py-3">Created At</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
+                  <tr className="border-b border-line bg-panel2/40">
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-[0.12em] text-muted/90">User Details</th>
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-[0.12em] text-muted/90">System Role</th>
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-[0.12em] text-muted/90">Created</th>
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-[0.12em] text-muted/90 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-line/40">
                   {users.map((user) => (
-                    <tr key={user.user_id} className="transition hover:bg-white/[0.01]">
-                      <td className="px-4 py-3.5">
-                        <div className="font-medium text-text">{user.full_name || 'No Name'}</div>
-                        <div className="text-xs text-muted">{user.email}</div>
-                        {user.phone ? <div className="text-xs text-muted">{user.phone}</div> : null}
+                    <tr key={user.user_id} className="hover:bg-panel2/20 transition-colors">
+                      <td className="px-4 py-3.5 align-middle">
+                        <div className="font-bold text-text">{user.full_name || 'No Name'}</div>
+                        <div className="text-[11px] text-muted mt-0.5">{user.email}</div>
+                        {user.phone ? <div className="text-[11px] text-muted">{user.phone}</div> : null}
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5 align-middle">
                         <Badge
                           tone={
                             user.role === 'Admin'
@@ -338,16 +336,16 @@ export function UserManagementPanel() {
                           {user.role}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3.5 text-xs text-muted">
+                      <td className="px-4 py-3.5 align-middle text-[11px] font-semibold text-muted">
                         {new Date(user.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-4 py-3.5 align-middle text-right">
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => startEdit(user)}
                             disabled={loading}
-                            className="rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs font-semibold text-text transition hover:bg-white/[0.02] disabled:opacity-50"
+                            className="rounded-lg border border-line bg-panel/60 px-2.5 py-1.5 text-xs font-semibold text-text hover:bg-panel2/80 transition disabled:opacity-50"
                           >
                             Edit
                           </button>
@@ -355,7 +353,7 @@ export function UserManagementPanel() {
                             type="button"
                             onClick={() => handleDeleteUser(user.user_id)}
                             disabled={loading}
-                            className="rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 text-xs font-semibold text-danger transition hover:bg-danger/10 disabled:opacity-50"
+                            className="rounded-lg border border-danger/30 bg-danger/5 px-2.5 py-1.5 text-xs font-semibold text-danger hover:bg-danger/10 transition disabled:opacity-50"
                           >
                             Delete
                           </button>
@@ -372,3 +370,7 @@ export function UserManagementPanel() {
     </div>
   );
 }
+
+const inputClass = "w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-xs text-text outline-none placeholder:text-muted/45 focus:border-accent focus:ring-1 focus:ring-accent transition shadow-sm";
+const selectClass = "w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-xs text-text outline-none focus:border-accent focus:ring-1 focus:ring-accent transition shadow-sm cursor-pointer [&>option]:bg-bg [&>option]:text-text";
+

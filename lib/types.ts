@@ -109,6 +109,7 @@ export type Gr55CostRow = {
   cost_category?: string | null;
   cost_element?: string | null;
   cost_center?: string | null;
+  purchasing_document?: string | null;
   amount: number;
   currency?: string | null;
   raw_data_json: Record<string, string | number | boolean | null>;

@@ -22,6 +22,19 @@ export async function parseGr55File(file: File): Promise<ParsedFinancialUpload<G
       const costElement = String(row.cost_element ?? '').trim();
       const costCategory = String(row.cost_element_name ?? '').trim();
       const currency = String(row.co_area_currency ?? '').trim();
+      const purchasingDocument = String(
+        row.purchasing_document ??
+        row.purchasingdocument ??
+        row.purchasing_doc ??
+        row.purchasingdoc ??
+        row.purch_doc ??
+        row.purchase_order ??
+        row.po_number ??
+        row.po_no ??
+        row.po ??
+        row.ebeln ??
+        ''
+      ).trim() || null;
 
       return {
         project_id: '',
@@ -34,6 +47,7 @@ export async function parseGr55File(file: File): Promise<ParsedFinancialUpload<G
         cost_category: costCategory || null,
         cost_element: costElement || null,
         cost_center: String(row.cost_center ?? row.partner_cctr ?? row.reference_org_unit ?? '').trim() || null,
+        purchasing_document: purchasingDocument,
         amount,
         currency: currency || null,
         raw_data_json: {
@@ -45,6 +59,7 @@ export async function parseGr55File(file: File): Promise<ParsedFinancialUpload<G
           cost_element_name: costCategory,
           fiscal_year: row.fiscal_year ?? null,
           fiscal_period: row.fiscal_period ?? row.period ?? row.from_period ?? null,
+          purchasing_document: purchasingDocument,
           source_row_count: 1,
         },
       };

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DarkSelect } from "@/components/dark-select";
 import { surfaceCard } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 type SourceType = "cn41" | "gr55" | "sales_order";
 type UploadItem = { file: File; sourceType: SourceType };
@@ -113,88 +114,113 @@ export function Cn41UploadForm({ projects }: { projects: { id: string; project_n
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`p-5 ${surfaceCard}`}>
-      <h3 className="text-lg font-semibold text-text">Upload Financial Source</h3>
-      <p className="mt-1 text-sm text-muted">
-        Upload CN41 for planned cost, GR55 for actual cost, or the Sales Order report for planned revenue.
-      </p>
-      <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_2fr]">
-        <DarkSelect
-          value={projectId}
-          onChange={setProjectId}
-          name="project_id"
-          placeholder="Select project"
-          options={projects.map((project) => ({ value: project.id, label: project.project_name }))}
-        />
-        <input
-          type="file"
-          accept=".xlsx,.xls"
-          multiple
-          onChange={(e) => {
-            const selected = Array.from(e.target.files ?? []);
-            setItems((current) => [
-              ...current,
-              ...selected.map((file) => ({ file, sourceType: inferSourceType(file.name) })),
-            ]);
-            e.currentTarget.value = "";
-          }}
-          className="rounded-xl border border-line/70 bg-panel/70 px-4 py-3 text-sm text-text file:mr-4 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:text-bg"
-        />
+    <form onSubmit={handleSubmit} className={cn("space-y-6 p-6", surfaceCard)}>
+      <div className="border-b border-line/30 pb-5">
+        <div className="section-kicker text-accent font-bold tracking-[0.12em]">Data Ingestion</div>
+        <h3 className="mt-1 text-lg font-bold text-text">Upload Financial Source</h3>
+        <p className="mt-1 text-xs text-muted/90 font-medium">
+          Upload CN41 for planned cost, GR55 for actual cost, or the Sales Order report for planned revenue.
+        </p>
       </div>
-      <div className="mt-3 space-y-2 text-xs text-muted">
-        <div className="grid gap-2 rounded-xl border border-line/50 bg-panel/30 p-3 md:grid-cols-3">
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-muted">Target Project</label>
+          <DarkSelect
+            value={projectId}
+            onChange={setProjectId}
+            name="project_id"
+            placeholder="Select project"
+            options={projects.map((project) => ({ value: project.id, label: project.project_name }))}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-muted">Select Excel Spreadsheet(s)</label>
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            multiple
+            onChange={(e) => {
+              const selected = Array.from(e.target.files ?? []);
+              setItems((current) => [
+                ...current,
+                ...selected.map((file) => ({ file, sourceType: inferSourceType(file.name) })),
+              ]);
+              e.currentTarget.value = "";
+            }}
+            className="rounded-lg border border-line bg-panel px-3 py-2 text-xs text-text file:mr-3 file:rounded file:border-0 file:bg-accent file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-white file:hover:bg-accent-hover file:cursor-pointer outline-none focus:border-accent focus:ring-1 focus:ring-accent transition shadow-sm w-full"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="text-xs font-bold text-muted uppercase tracking-wider">Latest Source Versions</div>
+        <div className="grid gap-3 rounded-xl border border-line bg-panel2/10 p-4 sm:grid-cols-3">
           <SourceVersionLabel label="CN41" source={latestSources.cn41} />
           <SourceVersionLabel label="GR55" source={latestSources.gr55} />
           <SourceVersionLabel label="Sales Order" source={latestSources.sales_order} />
         </div>
+
         {items.length ? (
-          items.map((item, index) => (
-            <div key={`${item.file.name}-${index}`} className="flex flex-wrap items-center gap-3 rounded-xl border border-line/50 bg-panel/40 px-3 py-2">
-              <div className="min-w-0 flex-1 truncate">{item.file.name}</div>
-              <select
-                className="rounded-lg border border-line/70 bg-panel/70 px-2 py-1 text-xs text-text"
-                value={item.sourceType}
-                onChange={(e) =>
-                  setItems((current) =>
-                    current.map((row, rowIndex) =>
-                      rowIndex === index ? { ...row, sourceType: e.target.value as SourceType } : row,
-                    ),
-                  )
-                }
-              >
-                <option value="cn41">CN41 planned cost</option>
-                <option value="gr55">GR55 actual cost</option>
-                <option value="sales_order">Sales order revenue</option>
-              </select>
-              <button
-                type="button"
-                onClick={() => setItems((current) => current.filter((_, rowIndex) => rowIndex !== index))}
-                className="rounded-lg border border-danger/30 px-2 py-1 text-xs font-medium text-danger hover:bg-danger/10"
-              >
-                Remove
-              </button>
-            </div>
-          ))
+          <div className="space-y-2">
+            <div className="text-xs font-bold text-muted uppercase tracking-wider pt-2">Selected Files to Upload</div>
+            {items.map((item, index) => (
+              <div key={`${item.file.name}-${index}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel2/20 px-4 py-3 hover:border-line-hover transition">
+                <div className="min-w-0 flex-1 truncate text-xs font-bold text-text">{item.file.name}</div>
+                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                  <select
+                    className="rounded-lg border border-line bg-panel px-3 py-1.5 text-xs text-text outline-none focus:border-accent focus:ring-1 focus:ring-accent transition cursor-pointer"
+                    value={item.sourceType}
+                    onChange={(e) =>
+                      setItems((current) =>
+                        current.map((row, rowIndex) =>
+                          rowIndex === index ? { ...row, sourceType: e.target.value as SourceType } : row,
+                        ),
+                      )
+                    }
+                  >
+                    <option value="cn41">CN41 planned cost</option>
+                    <option value="gr55">GR55 actual cost</option>
+                    <option value="sales_order">Sales order revenue</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setItems((current) => current.filter((_, rowIndex) => rowIndex !== index))}
+                    className="rounded-lg border border-danger/30 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger/10 transition"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
-          <div>Pick one or more files. Each file will be assigned its own source type before upload.</div>
+          <div className="text-xs font-medium text-muted bg-panel/30 border border-dashed border-line p-4 text-center rounded-xl">
+            No files chosen for upload yet. Choose Excel files above to start.
+          </div>
         )}
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button disabled={loading || !items.length} className="rounded-xl bg-accent px-4 py-3 text-sm font-medium text-bg disabled:opacity-60">
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-line/30 pt-4">
+        <button
+          disabled={loading || !items.length}
+          className="rounded-lg bg-accent text-white px-4 py-2.5 text-xs font-semibold shadow hover:bg-accent-hover active:scale-[0.98] transition disabled:opacity-60"
+        >
           {loading ? "Uploading..." : "Upload and recalculate"}
         </button>
         <button
           type="button"
           onClick={handleRecalculate}
           disabled={recalculating}
-          className="rounded-xl border border-line/70 bg-panel/60 px-4 py-3 text-sm font-medium text-text hover:bg-panel2/80 disabled:opacity-60"
+          className="rounded-lg border border-line bg-panel/60 px-4 py-2.5 text-xs font-semibold text-text hover:bg-panel2/80 active:scale-[0.98] transition disabled:opacity-60"
         >
           {recalculating ? "Recalculating..." : "Recalculate from WBS config"}
         </button>
-        <span className="text-xs text-muted">
-          {items.length ? `${items.length} file(s) selected` : "You can select multiple files at once."}
-        </span>
-        {message ? <span className="text-sm text-muted">{message}</span> : null}
+        {message ? (
+          <span className="text-xs font-semibold text-accent/90 bg-accent/5 border border-accent/10 px-3.5 py-2.5 rounded-lg ml-2">
+            {message}
+          </span>
+        ) : null}
       </div>
     </form>
   );
@@ -211,11 +237,11 @@ function SourceVersionLabel({ label, source }: { label: string; source: UploadLa
   const dateLabel = source?.upload_date ? new Date(source.upload_date).toLocaleDateString("en-GB") : "none uploaded";
   const versionLabel = source ? `v${source.version_no}` : "no version";
   return (
-    <div className="rounded-lg border border-line/50 bg-panel/70 px-3 py-2">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</div>
-      <div className="mt-1 truncate text-sm text-text">{source ? source.file_name : "No file uploaded yet"}</div>
-      <div className="text-[11px] text-muted">
-        {versionLabel} {source ? `- ${dateLabel}` : ""}
+    <div className="rounded-lg border border-line bg-panel px-3.5 py-3 transition hover:border-line-hover">
+      <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted">{label}</div>
+      <div className="mt-1 truncate text-xs font-bold text-text">{source ? source.file_name : "No file uploaded"}</div>
+      <div className="mt-0.5 text-[10px] font-semibold text-muted/80">
+        {versionLabel} {source ? `• ${dateLabel}` : ""}
       </div>
     </div>
   );
@@ -227,3 +253,4 @@ function inferSourceType(name: string): SourceType {
   if (lowered.includes("sales") || lowered.includes("order") || lowered.includes("so")) return "sales_order";
   return "cn41";
 }
+

@@ -26,6 +26,7 @@ export function ProjectAdminDetailsForm({
   projectSubcontracts,
   projectManagers,
   section = "summary",
+  canEdit = true,
 }: {
   project: Project;
   revenueWbsCount: number;
@@ -35,6 +36,7 @@ export function ProjectAdminDetailsForm({
   projectSubcontracts: ProjectSubcontract[];
   projectManagers: UserProfile[];
   section?: "summary" | "subcontracts";
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const resolveManager = (managerId: string) =>
@@ -231,78 +233,81 @@ export function ProjectAdminDetailsForm({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {section === "summary" ? (
         <>
-          <section className={`space-y-4 p-5 ${surfaceCard}`}>
+          <section className={`space-y-6 p-6 border border-line/40 bg-panel/30 shadow-card ${surfaceCard}`}>
             <div>
-              <h3 className="text-lg font-semibold text-text">Project Summary</h3>
-              <p className="mt-1 text-sm text-muted">
-                Project overview, ownership, subcontract package readiness, and master-data readiness.
+              <h3 className="text-base font-bold text-text">Project Admin Summary</h3>
+              <p className="mt-1 text-xs text-muted/80 font-medium">
+                Review operational status, ownership details, and configuration readiness.
               </p>
             </div>
 
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <section className="rounded-xl border border-line bg-panel2/50 p-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 <SummaryField label="Project Name" value={form.project_name || "-"} />
                 <SummaryField label="Project Code" value={form.project_code || "-"} />
-                <SummaryField label="Revenue WBS Count" value={String(revenueWbsCount)} />
-                <SummaryField label="Latest CN41 Upload" value={latestUpload ? new Date(latestUpload).toLocaleDateString() : "-"} />
+                <SummaryField label="WBS Count" value={String(revenueWbsCount)} />
+                <SummaryField label="Latest CN41 Refresh" value={latestUpload ? new Date(latestUpload).toLocaleDateString() : "-"} />
                 <SummaryField label="Status" value={form.status || "Active"} />
                 <SummaryField label="Project Manager" value={form.project_manager_name || "-"} />
-                <SummaryField label="Subcontract Packages" value={String(projectSubcontracts.length)} />
-                <SummaryField label="Active Packages" value={String(subcontractSummary.activeCount)} />
-                <SummaryField label="Total Subcontract PO" value={projectSubcontracts.length ? formatCurrency(subcontractSummary.totalPoAmount) : "-"} />
-                <SummaryField label="Master Records" value={`${manpowerRatesCount} MP | ${materialMastersCount} Mat`} />
+                <SummaryField label="Subcontracts POs" value={String(projectSubcontracts.length)} />
+                <SummaryField label="Active Accruals" value={String(subcontractSummary.activeCount)} />
+                <SummaryField label="Total Accrued PO" value={projectSubcontracts.length ? formatCurrency(subcontractSummary.totalPoAmount) : "-"} />
+                <SummaryField label="Calculations Base" value={`${manpowerRatesCount} Rates | ${materialMastersCount} Materials`} />
               </div>
             </section>
 
-            <div className="grid gap-2">
-              <StatRow label="Client" value={form.client_name || "-"} />
-              <StatRow label="PM Email" value={form.project_manager_email || "-"} />
-              <StatRow label="PM Phone" value={form.project_manager_phone || "-"} />
+            <div className="grid gap-1.5 pt-2">
+              <StatRow label="Client Name" value={form.client_name || "-"} />
+              <StatRow label="Project Manager Email" value={form.project_manager_email || "-"} />
+              <StatRow label="Project Manager Phone" value={form.project_manager_phone || "-"} />
               <StatRow label="Site Location" value={form.site_location || "-"} />
-              <StatRow label="Project Subcontract Packages" value={subcontractSummary.packageNames} />
+              <StatRow label="Subcontract Package Names" value={subcontractSummary.packageNames} />
             </div>
 
-            <div className="flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                onClick={recalculateFinancials}
-                disabled={recalculating}
-                className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-bg disabled:opacity-60"
-              >
-                {recalculating ? "Recalculating..." : "Recalculate Financials"}
-              </button>
+            <div className="flex flex-wrap justify-end gap-3 pt-3 border-t border-line/35">
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={recalculateFinancials}
+                  disabled={recalculating}
+                  className="rounded-lg bg-accent px-4 py-2.5 text-xs font-bold text-white hover:opacity-90 transition disabled:opacity-60 shadow-sm"
+                >
+                  {recalculating ? "Recalculating..." : "Recalculate WBS data"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setShowEditor((current) => !current)}
-                className="inline-flex items-center gap-2 rounded-xl border border-line/70 px-4 py-2 text-sm font-medium text-text hover:bg-panel2/80"
+                className="inline-flex items-center gap-2 rounded-lg border border-line bg-panel px-4 py-2.5 text-xs font-bold text-text hover:bg-panel2 transition shadow-sm"
               >
-                {showEditor ? "Hide edit section" : "Edit project details"}
+                {showEditor ? "Hide Edit Section" : (canEdit ? "Edit Project Details" : "View Project Details")}
                 <ChevronDown className={cn("h-4 w-4 transition-transform", showEditor && "rotate-180")} />
               </button>
             </div>
           </section>
 
           {showEditor ? (
-            <form onSubmit={saveProjectDetails} className={`space-y-4 p-5 ${surfaceCard}`}>
+            <form onSubmit={saveProjectDetails} className={`space-y-6 p-6 border border-line/40 bg-panel/30 shadow-card ${surfaceCard}`}>
               <div>
-                <h3 className="text-lg font-semibold text-text">Admin Project Details</h3>
-                <p className="mt-1 text-sm text-muted">
-                  Maintain the project header and PM ownership here. Subcontract package management is kept in its own tab to reduce page length and make administration cleaner.
+                <h3 className="text-base font-bold text-text">{canEdit ? "Edit Project Details" : "Project Details"}</h3>
+                <p className="mt-1 text-xs text-muted/80 font-medium font-sans">
+                  {canEdit ? "Modify project attributes, owner profile tags, and execution status." : "View project attributes and owner profile tags."}
                 </p>
               </div>
 
-              <section className="space-y-3">
-                <div className="text-sm font-medium text-text">Project Header</div>
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <fieldset disabled={!canEdit} className="space-y-6">
+                <section className="space-y-4">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted/95">Project Headers</div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <input className={inputClass} placeholder="Project code" value={form.project_code} onChange={(e) => setForm((c) => ({ ...c, project_code: e.target.value }))} />
                   <input className={inputClass} placeholder="Project name" value={form.project_name} onChange={(e) => setForm((c) => ({ ...c, project_name: e.target.value }))} />
                   <input className={inputClass} placeholder="Client name" value={form.client_name} onChange={(e) => setForm((c) => ({ ...c, client_name: e.target.value }))} />
                   <input className={inputClass} placeholder="Site location" value={form.site_location} onChange={(e) => setForm((c) => ({ ...c, site_location: e.target.value }))} />
                 </div>
-                <div className="max-w-sm">
+                <div className="max-w-xs">
                   <select className={inputClass} value={form.status} onChange={(e) => setForm((c) => ({ ...c, status: e.target.value }))}>
                     <option value="Active">Active</option>
                     <option value="On Hold">On Hold</option>
@@ -311,9 +316,9 @@ export function ProjectAdminDetailsForm({
                 </div>
               </section>
 
-              <section className="space-y-3">
-                <div className="text-sm font-medium text-text">Project Management</div>
-                <div className="grid gap-3 md:grid-cols-3">
+              <section className="space-y-4">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted/95">Project Management</div>
+                <div className="grid gap-4 sm:grid-cols-3">
                   <select
                     className={inputClass}
                     value={form.project_manager_user_id}
@@ -327,81 +332,93 @@ export function ProjectAdminDetailsForm({
                     ))}
                   </select>
                   <input
-                    className={inputClass}
+                    className={`${inputClass} bg-panel2/50`}
                     placeholder="Project manager email"
                     value={form.project_manager_email}
                     readOnly
                   />
                   <input
-                    className={inputClass}
+                    className={`${inputClass} bg-panel2/50`}
                     placeholder="Project manager phone"
                     value={form.project_manager_phone}
                     readOnly
                   />
                 </div>
-                <div className="text-xs text-muted">
-                  Select a PM from the user database. Name, email, and phone are filled automatically from that user profile.
+                <div className="text-[11px] text-muted font-medium">
+                  Note: Selection references user profiles. Email and phone details load automatically.
                 </div>
               </section>
 
-              <div className="flex items-center gap-3">
-                <button disabled={saving} className="rounded-xl bg-accent px-4 py-3 text-sm font-medium text-bg disabled:opacity-60">
-                  {saving ? "Saving..." : "Save project details"}
-                </button>
-                {message ? <span className="text-sm text-muted">{message}</span> : null}
-              </div>
+              </fieldset>
+
+              {canEdit && (
+                <div className="flex items-center gap-3 pt-3 border-t border-line/35">
+                  <button disabled={saving} className="rounded-lg bg-accent px-5 py-3 text-xs font-bold text-white hover:opacity-90 transition disabled:opacity-60 shadow-sm">
+                    {saving ? "Saving..." : "Save Project Details"}
+                  </button>
+                  {message ? (
+                    <span className="text-xs font-bold text-accent bg-accent/5 border border-accent/15 px-3 py-2 rounded-md">
+                      {message}
+                    </span>
+                  ) : null}
+                </div>
+              )}
             </form>
           ) : null}
         </>
       ) : null}
 
       {section === "subcontracts" ? (
-        <form onSubmit={saveSubcontracts} className={`space-y-4 p-5 ${surfaceCard}`}>
+        <form onSubmit={saveSubcontracts} className={`space-y-6 p-6 border border-line/40 bg-panel/30 shadow-card ${surfaceCard}`}>
           <div>
-            <h3 className="text-lg font-semibold text-text">Subcontractor Management</h3>
-            <p className="mt-1 text-sm text-muted">
-              Maintain whole-project subcontract packages here. Keep each commercial package such as Civil, Fiber, Asphalt, or any other package as a separate line for cleaner PM selection later.
+            <h3 className="text-base font-bold text-text">Subcontractor Packages Configuration</h3>
+            <p className="mt-1 text-xs text-muted/80 font-medium">
+              Maintain project subcontractor packages. Registered lines display inside PM updates wizards.
             </p>
           </div>
 
-          <section className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
+          <fieldset disabled={!canEdit} className="space-y-4">
+            <div className="flex items-center justify-between gap-3 border-b border-line/35 pb-2">
               <div>
-                <div className="text-sm font-medium text-text">Project Subcontracts</div>
-                <div className="mt-1 text-xs text-muted">
-                  Add whole-project subcontract packages such as Civil, Fiber, Asphalt, or any other commercial package.
+                <div className="text-xs font-bold text-text">Package Registers</div>
+                <div className="text-[10px] text-muted font-medium mt-1">
+                  Define structural PO amounts and contract titles (Civil, Fiber, Mechanical).
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={addSubcontractRow}
-                className="inline-flex items-center gap-2 rounded-xl border border-line/70 px-3 py-2 text-sm font-medium text-text hover:bg-panel2/80"
-              >
-                <Plus className="h-4 w-4" />
-                Add package
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={addSubcontractRow}
+                  className="inline-flex items-center gap-2 rounded-lg border border-line bg-panel px-3.5 py-2 text-xs font-bold text-text hover:bg-panel2 transition shadow-sm"
+                >
+                  <Plus className="h-4 w-4 text-accent" />
+                  Add Package
+                </button>
+              )}
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {subcontractRows.map((row, index) => (
-                <div key={row.id} className="rounded-2xl border border-line/70 bg-panel/35 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-text">Package {index + 1}</div>
-                    <button
-                      type="button"
-                      onClick={() => removeSubcontractRow(row.id)}
-                      className="inline-flex items-center gap-2 rounded-xl border border-danger/30 px-3 py-2 text-xs font-medium text-danger hover:bg-danger/10"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Remove
-                    </button>
+                <div key={row.id} className="rounded-xl border border-line bg-panel/40 p-5 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between gap-3 border-b border-line/35 pb-2">
+                    <div className="text-xs font-bold text-text">Accrual Package #{index + 1}</div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => removeSubcontractRow(row.id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-danger/20 bg-danger/5 px-3 py-1.5 text-[10px] font-bold text-danger hover:bg-danger hover:text-white transition"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Remove
+                      </button>
+                    )}
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                    <input className={inputClass} placeholder="Package name (Civil / Fiber / Asphalt)" value={row.package_name} onChange={(e) => updateSubcontractRow(row.id, "package_name", e.target.value)} />
-                    <input className={inputClass} placeholder="Subcontractor name" value={row.subcontractor_name} onChange={(e) => updateSubcontractRow(row.id, "subcontractor_name", e.target.value)} />
-                    <input className={inputClass} placeholder="PO number" value={row.po_number} onChange={(e) => updateSubcontractRow(row.id, "po_number", e.target.value)} />
-                    <input className={inputClass} type="number" step="0.01" placeholder="PO amount" value={row.po_amount} onChange={(e) => updateSubcontractRow(row.id, "po_amount", e.target.value)} />
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <input className={inputClass} placeholder="Package name (Civil / Fiber)" value={row.package_name} onChange={(e) => updateSubcontractRow(row.id, "package_name", e.target.value)} />
+                    <input className={inputClass} placeholder="Subcontractor / Vendor" value={row.subcontractor_name} onChange={(e) => updateSubcontractRow(row.id, "subcontractor_name", e.target.value)} />
+                    <input className={inputClass} placeholder="PO reference" value={row.po_number} onChange={(e) => updateSubcontractRow(row.id, "po_number", e.target.value)} />
+                    <input className={inputClass} type="number" step="0.01" placeholder="PO value amount" value={row.po_amount} onChange={(e) => updateSubcontractRow(row.id, "po_amount", e.target.value)} />
                     <select className={inputClass} value={row.status} onChange={(e) => updateSubcontractRow(row.id, "status", e.target.value)}>
                       <option value="Active">Active</option>
                       <option value="On Hold">On Hold</option>
@@ -410,35 +427,41 @@ export function ProjectAdminDetailsForm({
                   </div>
 
                   <textarea
-                    className="mt-3 min-h-24 rounded-xl border border-line/70 bg-panel/70 px-4 py-3 text-sm text-text"
-                    placeholder="Scope / remarks for this subcontract package"
+                    className="w-full rounded-lg border border-line bg-panel px-4 py-3 text-xs text-text outline-none focus:border-accent shadow-sm min-h-[90px]"
+                    placeholder="Describe PO scope or remarks..."
                     value={row.scope}
                     onChange={(e) => updateSubcontractRow(row.id, "scope", e.target.value)}
                   />
                 </div>
               ))}
             </div>
-          </section>
+          </fieldset>
 
-          <div className="flex items-center gap-3">
-            <button disabled={saving} className="rounded-xl bg-accent px-4 py-3 text-sm font-medium text-bg disabled:opacity-60">
-              {saving ? "Saving..." : "Save project subcontracts"}
-            </button>
-            {message ? <span className="text-sm text-muted">{message}</span> : null}
-          </div>
+          {canEdit && (
+            <div className="flex items-center gap-3 pt-3 border-t border-line/35">
+              <button disabled={saving} className="rounded-lg bg-accent px-5 py-3 text-xs font-bold text-white hover:opacity-90 transition disabled:opacity-60 shadow-sm">
+                {saving ? "Saving..." : "Save Subcontracts"}
+              </button>
+              {message ? (
+                <span className="text-xs font-bold text-accent bg-accent/5 border border-accent/15 px-3 py-2 rounded-md">
+                  {message}
+                </span>
+              ) : null}
+            </div>
+          )}
         </form>
       ) : null}
     </div>
   );
 }
 
-const inputClass = "rounded-xl border border-line/70 bg-panel/70 px-4 py-3 text-sm text-text";
+const inputClass = "rounded-lg border border-line bg-panel px-3 py-2.5 text-xs text-text outline-none focus:border-accent focus:ring-1 focus:ring-accent transition shadow-sm w-full";
 
 function SummaryField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-panel/40 px-4 py-3">
-      <div className="text-[10px] uppercase tracking-[0.12em] text-muted">{label}</div>
-      <div className="mt-1 text-sm font-medium text-text">{value}</div>
+    <div className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+      <div className="section-kicker text-muted/70 font-semibold tracking-wider">{label}</div>
+      <div className="mt-2 text-xs font-bold text-text truncate">{value}</div>
     </div>
   );
 }
@@ -454,3 +477,4 @@ function createEmptySubcontractRow(): EditableSubcontractRow {
     status: "Active",
   };
 }
+

@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SEC NG NMFOC Jeddah | Financial Control Dashboard</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Manrope:wght@600;700;800&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Scripts -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-surface": "#dae2fd",
+                "surface-container-lowest": "#060e20",
+                "tertiary-fixed": "#d8e3fb",
+                "surface": "#0b1326",
+                "inverse-primary": "#006b5f",
+                "secondary-fixed-dim": "#b9c8de",
+                "outline-variant": "#3c4a46",
+                "primary-container": "#2dd4bf",
+                "on-primary-container": "#00574d",
+                "primary-fixed-dim": "#3cddc7",
+                "surface-container": "#171f33",
+                "on-background": "#dae2fd",
+                "inverse-on-surface": "#283044",
+                "surface-bright": "#31394d",
+                "secondary": "#b9c8de",
+                "secondary-fixed": "#d4e4fa",
+                "on-secondary": "#233143",
+                "inverse-surface": "#dae2fd",
+                "tertiary-fixed-dim": "#bcc7de",
+                "on-error": "#690005",
+                "error": "#ffb4ab",
+                "tertiary": "#cfdaf2",
+                "tertiary-container": "#b3bed5",
+                "on-primary": "#003731",
+                "on-secondary-fixed": "#0d1c2d",
+                "on-tertiary-fixed-variant": "#3c475a",
+                "on-primary-fixed": "#00201c",
+                "surface-container-low": "#131b2e",
+                "surface-tint": "#3cddc7",
+                "outline": "#859490",
+                "on-tertiary-container": "#424d61",
+                "surface-container-high": "#222a3d",
+                "on-secondary-fixed-variant": "#39485a",
+                "on-tertiary-fixed": "#111c2d",
+                "on-secondary-container": "#a7b6cc",
+                "on-error-container": "#ffdad6",
+                "on-primary-fixed-variant": "#005047",
+                "secondary-container": "#39485a",
+                "on-surface-variant": "#bacac5",
+                "on-tertiary": "#263143",
+                "background": "#0b1326",
+                "surface-variant": "#2d3449",
+                "surface-container-highest": "#2d3449",
+                "primary-fixed": "#62fae3",
+                "surface-dim": "#0b1326",
+                "error-container": "#93000a",
+                "primary": "#57f1db",
+                "status-success": "#2dd4bf",
+                "status-warning": "#fbbf24",
+                "status-danger": "#f87171"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "stack-lg": "32px",
+                "stack-md": "16px",
+                "unit": "4px",
+                "gutter": "16px",
+                "stack-sm": "8px",
+                "container-padding": "24px"
+        },
+        "fontFamily": {
+                "body-lg": ["Hanken Grotesk"],
+                "headline-lg": ["Manrope"],
+                "headline-md": ["Manrope"],
+                "headline-xl": ["Manrope"],
+                "data-display": ["JetBrains Mono"],
+                "body-md": ["Hanken Grotesk"],
+                "label-sm": ["JetBrains Mono"],
+                "label-caps": ["JetBrains Mono"]
+        },
+        "fontSize": {
+                "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                "headline-xl": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                "data-display": ["14px", {"lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                "label-caps": ["12px", {"lineHeight": "16px", "fontWeight": "600"}]
+        }
+      },
+    },
+  }
+</script>
+<style>
+        body { background-color: #0b1326; color: #dae2fd; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .scroll-hide::-webkit-scrollbar { display: none; }
+        .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .kpi-accent-teal { border-left: 4px solid #2dd4bf; }
+        .kpi-accent-amber { border-left: 4px solid #fbbf24; }
+        .kpi-accent-red { border-left: 4px solid #f87171; }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="font-body-md text-body-md antialiased">
+<!-- Executive Side Navigation (Fixed) -->
+<aside class="h-screen w-64 fixed left-0 top-0 overflow-y-auto bg-surface-container-lowest border-r border-outline-variant flex flex-col py-6 z-50">
+<div class="px-6 mb-10">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface tracking-tight">NMFOC Dashboard</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant mt-1">Financial Control</p>
+</div>
+<nav class="flex-1 px-3 space-y-1">
+<a class="flex items-center px-3 py-2.5 bg-surface-container-high text-primary font-bold border-r-4 border-primary transition-all" href="#">
+<span class="material-symbols-outlined mr-3 text-primary">dashboard</span>
+<span class="font-label-caps text-label-caps">Dashboard</span>
+</a>
+<a class="flex items-center px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">folder_special</span>
+<span class="font-label-caps text-label-caps">Projects</span>
+</a>
+<a class="flex items-center px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">account_balance</span>
+<span class="font-label-caps text-label-caps">Financial Sources</span>
+</a>
+<a class="flex items-center px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">account_tree</span>
+<span class="font-label-caps text-label-caps">Revenue WBS</span>
+</a>
+<a class="flex items-center px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">warning</span>
+<span class="font-label-caps text-label-caps">Risk Analysis</span>
+</a>
+<a class="flex items-center px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+</nav>
+<div class="px-3 pt-6 border-t border-outline-variant mt-auto">
+<a class="flex items-center px-3 py-2 text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">help</span>
+<span class="font-label-caps text-label-caps">Help Center</span>
+</a>
+<a class="flex items-center px-3 py-2 text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-status-danger">logout</span>
+<span class="font-label-caps text-label-caps">Log Out</span>
+</a>
+</div>
+</aside>
+<!-- Top App Bar -->
+<header class="fixed top-0 right-0 h-16 bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center px-8 z-40 ml-64" style="width: calc(100% - 16rem);">
+<div class="flex items-center space-x-6">
+<span class="font-headline-md text-headline-md font-black text-on-surface">Financial Control System</span>
+<nav class="hidden lg:flex items-center space-x-6 text-on-surface-variant">
+<a class="font-label-caps text-label-caps hover:text-on-surface transition-colors" href="#">Global Portfolio</a>
+<a class="font-label-caps text-label-caps text-on-surface border-b-2 border-primary pb-1 font-bold" href="#">Active Projects</a>
+<a class="font-label-caps text-label-caps hover:text-on-surface transition-colors" href="#">Archived</a>
+</nav>
+</div>
+<div class="flex items-center space-x-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all">download</button>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<button class="flex items-center px-4 py-2 border border-outline-variant bg-surface-container-low hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined mr-2">filter_alt</span>
+<span class="font-label-caps text-label-caps">Filter</span>
+</button>
+<button class="bg-primary text-on-primary-container px-4 py-2 font-label-caps text-label-caps hover:opacity-90 active:scale-95 transition-all">
+                Create WBS
+            </button>
+<img class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A professional corporate headshot of an executive" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHGXBcwFrWgkt51zCzUmPj_wWEIyFIkw_GmLJshZR4qA65TO4EuTWBN8ZEsf_io_ny9dQyVnBOVzWcAx6pIvORidbh4E6jaeLBxxQfWMPVJ8LvBy922w0HFVlrFoMoQ4Nv6I0cyMBmGMkRiGZ8xSatwY4CqZ6S3Xtbv8E0zhjhMB5lt9owih01mrkHaIrNETt-Ek2_zc1lQIQmIY20rvRCQxZi-hCt0DFLaxg1_4spX71Alv1o7p0DQ49iYb35OngBrZYsvUJMexA"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 px-8 pb-12 max-w-screen-2xl mx-auto">
+<!-- Executive Page Header -->
+<section class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<div class="flex items-center space-x-3 mb-2">
+<span class="px-2 py-0.5 bg-surface-container-high text-primary font-label-sm text-label-sm border border-outline-variant rounded">SIS-NGS.FOC.W.JD.001</span>
+<span class="flex items-center text-status-success font-label-caps text-label-caps">
+<span class="w-2 h-2 rounded-full bg-status-success mr-1.5"></span>
+                        Active Project
+                    </span>
+</div>
+<h2 class="font-headline-xl text-headline-xl text-on-surface font-bold">SEC NG NMFOC Jeddah</h2>
+<p class="text-on-surface-variant mt-1 flex items-center">
+<span class="material-symbols-outlined text-[18px] mr-1">location_on</span>
+                    Jeddah, Saudi Arabia • Infrastructure Modernization
+                </p>
+</div>
+<div class="flex items-center space-x-4 text-right">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Last Updated</p>
+<p class="font-body-md text-body-md font-bold text-on-surface">Oct 24, 2023 | 08:42 AM</p>
+</div>
+<button class="p-2 border border-outline-variant hover:bg-surface-container-high transition-colors text-on-surface">
+<span class="material-symbols-outlined">sync</span>
+</button>
+</div>
+</section>
+<!-- KPI Summary Row -->
+<section class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+<!-- Planned Revenue -->
+<div class="bg-surface-container-low p-5 border border-outline-variant kpi-accent-teal">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Planned Revenue</p>
+<p class="font-headline-md text-headline-md text-on-surface tabular-nums">Ħ36,266,300.72</p>
+<div class="mt-4 flex items-center text-status-success">
+<span class="material-symbols-outlined text-[16px] mr-1">trending_up</span>
+<span class="font-label-sm text-label-sm">+2.4% vs Baseline</span>
+</div>
+</div>
+<!-- Recognized Revenue -->
+<div class="bg-surface-container-low p-5 border border-outline-variant kpi-accent-teal">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Recognized Revenue</p>
+<p class="font-headline-md text-headline-md text-on-surface tabular-nums">Ħ13,218,122.34</p>
+<div class="mt-4 w-full bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 36.4%"></div>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-2">36.4% Recognition Rate</p>
+</div>
+<!-- Management Actual Cost -->
+<div class="bg-surface-container-low p-5 border border-outline-variant kpi-accent-amber">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Management Actual Cost</p>
+<p class="font-headline-md text-headline-md text-on-surface tabular-nums">Ħ30,058,380.91</p>
+<div class="mt-4 flex items-center text-status-warning">
+<span class="material-symbols-outlined text-[16px] mr-1">info</span>
+<span class="font-label-sm text-label-sm">82.8% Utilization</span>
+</div>
+</div>
+<!-- Forecast Margin -->
+<div class="bg-surface-container-low p-5 border border-outline-variant kpi-accent-teal">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Forecast Margin</p>
+<p class="font-headline-md text-headline-md text-on-surface tabular-nums">Ħ6,207,919.81</p>
+<div class="mt-4 flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-bold text-primary">17.12% Margin</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Target: 15%</span>
+</div>
+</div>
+<!-- POC% -->
+<div class="bg-surface-container-low p-5 border border-outline-variant kpi-accent-teal">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">POC% (Complete)</p>
+<div class="flex items-baseline space-x-2">
+<p class="font-headline-md text-headline-md text-on-surface tabular-nums">43.18%</p>
+</div>
+<div class="mt-4 grid grid-cols-2 gap-2">
+<div class="text-[10px] uppercase font-bold text-on-surface-variant">Scheduled: 45.0%</div>
+<div class="text-[10px] uppercase font-bold text-status-warning text-right">-1.82% Delay</div>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+<!-- Comparative View -->
+<div class="lg:col-span-8 bg-surface-container-low border border-outline-variant overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container">
+<h3 class="font-headline-md text-headline-md text-on-surface">Revenue Source Comparison</h3>
+<div class="flex space-x-1 p-1 bg-surface-container-highest rounded">
+<button class="px-3 py-1 bg-surface-container-high shadow-sm font-label-caps text-label-caps text-on-surface">Weekly</button>
+<button class="px-3 py-1 font-label-caps text-label-caps text-on-surface-variant">Monthly</button>
+</div>
+</div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- SAP View -->
+<div class="p-6 border border-outline-variant bg-surface-container relative overflow-hidden">
+<div class="absolute top-0 right-0 bg-surface-container-highest text-on-surface-variant px-3 py-1 font-label-caps text-[10px]">SAP SYSTEM</div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-4">Reported Revenue (ERP)</p>
+<p class="font-headline-md text-headline-md text-on-surface mb-6">Ħ12,850,400.00</p>
+<div class="space-y-3">
+<div class="flex justify-between text-body-md text-on-surface-variant">
+<span>WBS Allocated</span>
+<span class="font-bold text-on-surface">Ħ10,120,000</span>
+</div>
+<div class="flex justify-between text-body-md text-on-surface-variant">
+<span>Unassigned</span>
+<span class="font-bold text-on-surface">Ħ2,730,400</span>
+</div>
+</div>
+</div>
+<!-- Management View -->
+<div class="p-6 border border-primary/20 bg-primary/5 relative overflow-hidden">
+<div class="absolute top-0 right-0 bg-primary text-on-primary-container px-3 py-1 font-label-caps text-[10px]">MANAGEMENT</div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-4">Simulated Revenue</p>
+<p class="font-headline-md text-headline-md text-primary mb-6">Ħ13,218,122.34</p>
+<div class="space-y-3">
+<div class="flex justify-between text-body-md text-on-surface-variant">
+<span>WBS Realized</span>
+<span class="font-bold text-on-surface">Ħ13,218,122</span>
+</div>
+<div class="flex justify-between text-body-md text-on-surface-variant">
+<span>Variance</span>
+<span class="font-bold text-status-success">+Ħ367,722</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Progress Distribution -->
+<div class="lg:col-span-4 bg-surface-container-low border border-outline-variant">
+<div class="px-6 py-4 border-b border-outline-variant bg-surface-container">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant">Progress Distribution</h3>
+</div>
+<div class="p-6 h-[280px] flex flex-col justify-center items-center">
+<!-- Custom Chart Simulation -->
+<div class="relative w-40 h-40">
+<svg class="w-full h-full transform -rotate-90">
+<circle cx="80" cy="80" fill="transparent" r="70" stroke="#171f33" stroke-width="12"></circle>
+<circle cx="80" cy="80" fill="transparent" r="70" stroke="#2dd4bf" stroke-dasharray="440" stroke-dashoffset="250" stroke-width="12"></circle>
+<circle cx="80" cy="80" fill="transparent" opacity="0.6" r="70" stroke="#3cddc7" stroke-dasharray="440" stroke-dashoffset="360" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-headline-md text-headline-md text-on-surface">43.2%</span>
+<span class="text-[10px] text-on-surface-variant font-bold">TOTAL POC</span>
+</div>
+</div>
+<div class="mt-8 grid grid-cols-2 gap-x-6 gap-y-2 w-full">
+<div class="flex items-center text-[11px] text-on-surface-variant">
+<span class="w-2 h-2 bg-primary mr-2"></span> Engineering (58%)
+                        </div>
+<div class="flex items-center text-[11px] text-on-surface-variant">
+<span class="w-2 h-2 bg-primary/60 mr-2"></span> Civil Works (32%)
+                        </div>
+<div class="flex items-center text-[11px] text-on-surface-variant">
+<span class="w-2 h-2 bg-surface-container mr-2"></span> Procurement (12%)
+                        </div>
+<div class="flex items-center text-[11px] text-on-surface-variant">
+<span class="w-2 h-2 bg-surface-bright mr-2"></span> Others (8%)
+                        </div>
+</div>
+</div>
+</div>
+</div>
+<!-- High-Density WBS Analysis Table -->
+<section class="bg-surface-container-low border border-outline-variant overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container">
+<h3 class="font-headline-md text-headline-md text-on-surface">WBS Performance Analysis</h3>
+<div class="flex items-center space-x-3">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="pl-10 pr-4 py-1.5 border border-outline-variant text-body-md focus:ring-0 focus:border-primary w-64 bg-surface-container-high text-on-surface" placeholder="Search WBS..." type="text"/>
+</div>
+<button class="bg-surface-container-high border border-outline-variant px-3 py-1.5 font-label-caps text-label-caps flex items-center hover:bg-surface-container-highest text-on-surface">
+<span class="material-symbols-outlined mr-2 text-[18px]">download</span> Export CSV
+                    </button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container border-b border-outline-variant h-10">
+<th class="px-6 font-label-caps text-label-caps text-on-surface-variant">WBS Code</th>
+<th class="px-4 font-label-caps text-label-caps text-on-surface-variant">WBS Name</th>
+<th class="px-4 font-label-caps text-label-caps text-on-surface-variant text-right">Planned Cost</th>
+<th class="px-4 font-label-caps text-label-caps text-on-surface-variant text-right">Actual Cost</th>
+<th class="px-4 font-label-caps text-label-caps text-on-surface-variant text-right">Forecast Margin</th>
+<th class="px-4 font-label-caps text-label-caps text-on-surface-variant text-center">POC%</th>
+<th class="px-6 font-label-caps text-label-caps text-on-surface-variant text-center">Status</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md divide-y divide-outline-variant">
+<!-- Row 1: Overrun -->
+<tr class="hover:bg-surface-container transition-colors h-[48px] bg-red-950/20">
+<td class="px-6 font-label-sm text-on-surface">JD.001.ENG</td>
+<td class="px-4 font-bold text-on-surface">Main Civil Engineering Works</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-on-surface-variant">Ħ8,400,000</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-status-danger">Ħ9,120,500</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-status-danger">(Ħ720,500)</td>
+<td class="px-4 text-center">
+<div class="flex items-center justify-center space-x-2">
+<span class="font-label-sm text-on-surface">88.5%</span>
+<div class="w-12 bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-status-danger h-full" style="width: 88.5%"></div>
+</div>
+</div>
+</td>
+<td class="px-6 text-center">
+<span class="inline-block px-2 py-1 bg-red-950/40 text-status-danger border border-red-900 font-label-caps text-[9px] rounded">CRITICAL OVERRUN</span>
+</td>
+</tr>
+<!-- Row 2: Healthy -->
+<tr class="hover:bg-surface-container transition-colors h-[48px]">
+<td class="px-6 font-label-sm text-on-surface">JD.001.PRC</td>
+<td class="px-4 text-on-surface">Telecom Systems Procurement</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-on-surface-variant">Ħ12,500,000</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-on-surface">Ħ5,200,000</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-status-success">Ħ2,150,000</td>
+<td class="px-4 text-center">
+<div class="flex items-center justify-center space-x-2">
+<span class="font-label-sm text-on-surface">41.2%</span>
+<div class="w-12 bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-status-success h-full" style="width: 41.2%"></div>
+</div>
+</div>
+</td>
+<td class="px-6 text-center">
+<span class="inline-block px-2 py-1 bg-teal-950/40 text-status-success border border-teal-900 font-label-caps text-[9px] rounded">ON TRACK</span>
+</td>
+</tr>
+<!-- Row 3: Minor Overrun -->
+<tr class="hover:bg-surface-container transition-colors h-[48px] bg-red-950/10">
+<td class="px-6 font-label-sm text-on-surface">JD.001.CON</td>
+<td class="px-4 text-on-surface">FOC Installation Services</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-on-surface-variant">Ħ10,120,000</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-on-surface">Ħ10,450,000</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-status-danger">(Ħ330,000)</td>
+<td class="px-4 text-center">
+<div class="flex items-center justify-center space-x-2">
+<span class="font-label-sm text-on-surface">98.0%</span>
+<div class="w-12 bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-status-warning h-full" style="width: 98%"></div>
+</div>
+</div>
+</td>
+<td class="px-6 text-center">
+<span class="inline-block px-2 py-1 bg-orange-950/40 text-status-warning border border-orange-900 font-label-caps text-[9px] rounded">BUDGET VARIANCE</span>
+</td>
+</tr>
+<!-- Row 4: Healthy -->
+<tr class="hover:bg-surface-container transition-colors h-[48px]">
+<td class="px-6 font-label-sm text-on-surface">JD.001.MGT</td>
+<td class="px-4 text-on-surface">Project Management &amp; Overheads</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-on-surface-variant">Ħ5,246,300</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-on-surface">Ħ5,287,880</td>
+<td class="px-4 font-label-sm text-right tabular-nums text-status-success">Ħ5,108,419</td>
+<td class="px-4 text-center">
+<div class="flex items-center justify-center space-x-2">
+<span class="font-label-sm text-on-surface">100.0%</span>
+<div class="w-12 bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-status-success h-full" style="width: 100%"></div>
+</div>
+</div>
+</td>
+<td class="px-6 text-center">
+<span class="inline-block px-2 py-1 bg-surface-container-highest text-on-surface-variant border border-outline-variant font-label-caps text-[9px] rounded">CLOSED</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-4 border-t border-outline-variant bg-surface-container flex justify-between items-center">
+<p class="font-label-sm text-label-sm text-on-surface-variant">Showing 4 of 42 WBS Entries</p>
+<div class="flex space-x-2">
+<button class="px-3 py-1 border border-outline-variant bg-surface-container-high text-on-surface-variant font-bold disabled:opacity-30" disabled="">Previous</button>
+<button class="px-3 py-1 border border-outline-variant bg-surface-container-high text-on-surface font-bold">Next</button>
+</div>
+</div>
+</section>
+<!-- Elegant Boardroom Charts -->
+<section class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="bg-surface-container-low border border-outline-variant p-6">
+<div class="flex items-center justify-between mb-8">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Monthly Performance Trend</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Management View vs SAP Baseline</p>
+</div>
+<div class="flex items-center space-x-4">
+<div class="flex items-center font-label-caps text-[10px] text-on-surface-variant">
+<span class="w-3 h-0.5 bg-on-surface-variant mr-1.5"></span> SAP ERP
+                        </div>
+<div class="flex items-center font-label-caps text-[10px] text-primary">
+<span class="w-3 h-0.5 bg-primary mr-1.5"></span> MGT SIM
+                        </div>
+</div>
+</div>
+<!-- Simulated Chart -->
+<div class="relative h-48 w-full flex items-end justify-between space-x-4 px-2">
+<div class="absolute bottom-0 w-full border-b border-outline-variant opacity-50"></div>
+<!-- Jan -->
+<div class="relative flex-1 flex flex-col items-center group">
+<div class="w-full bg-surface-container-highest h-24 absolute bottom-0"></div>
+<div class="w-full bg-primary/40 h-20 absolute bottom-0 group-hover:bg-primary/60 transition-colors"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-2 absolute -bottom-6">JAN</span>
+</div>
+<!-- Feb -->
+<div class="relative flex-1 flex flex-col items-center group">
+<div class="w-full bg-surface-container-highest h-28 absolute bottom-0"></div>
+<div class="w-full bg-primary/40 h-32 absolute bottom-0 group-hover:bg-primary/60 transition-colors"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-2 absolute -bottom-6">FEB</span>
+</div>
+<!-- Mar -->
+<div class="relative flex-1 flex flex-col items-center group">
+<div class="w-full bg-surface-container-highest h-36 absolute bottom-0"></div>
+<div class="w-full bg-primary/40 h-40 absolute bottom-0 group-hover:bg-primary/60 transition-colors"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-2 absolute -bottom-6">MAR</span>
+</div>
+<!-- Apr -->
+<div class="relative flex-1 flex flex-col items-center group">
+<div class="w-full bg-surface-container-highest h-20 absolute bottom-0"></div>
+<div class="w-full bg-primary/40 h-24 absolute bottom-0 group-hover:bg-primary/60 transition-colors"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-2 absolute -bottom-6">APR</span>
+</div>
+<!-- May -->
+<div class="relative flex-1 flex flex-col items-center group">
+<div class="w-full bg-surface-container-highest h-32 absolute bottom-0"></div>
+<div class="w-full bg-primary/40 h-36 absolute bottom-0 group-hover:bg-primary/60 transition-colors"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-2 absolute -bottom-6">MAY</span>
+</div>
+</div>
+<div class="h-6"></div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-6 flex flex-col justify-between">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Risk Exposure Matrix</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Impact vs. Probability Analysis</p>
+</div>
+<div class="flex-1 mt-6 grid grid-cols-3 grid-rows-3 gap-2">
+<div class="bg-surface-container border border-outline-variant flex items-center justify-center font-label-caps text-[10px] text-on-surface-variant">Low</div>
+<div class="bg-surface-container border border-outline-variant flex items-center justify-center font-label-caps text-[10px] text-on-surface-variant">Low</div>
+<div class="bg-red-950/20 border border-red-900/50 flex items-center justify-center relative">
+<div class="w-2 h-2 bg-status-danger rounded-full animate-pulse"></div>
+</div>
+<div class="bg-surface-container border border-outline-variant flex items-center justify-center font-label-caps text-[10px] text-on-surface-variant">Low</div>
+<div class="bg-orange-950/20 border border-orange-900/50 flex items-center justify-center">
+<div class="w-2 h-2 bg-status-warning rounded-full"></div>
+</div>
+<div class="bg-orange-950/20 border border-orange-900/50 flex items-center justify-center">
+<div class="w-2 h-2 bg-status-warning rounded-full"></div>
+</div>
+<div class="bg-surface-container border border-outline-variant"></div>
+<div class="bg-surface-container border border-outline-variant"></div>
+<div class="bg-surface-container border border-outline-variant"></div>
+</div>
+<div class="mt-4 flex items-center space-x-6">
+<div class="flex items-center font-label-sm text-on-surface">
+<span class="w-2 h-2 bg-status-danger rounded-full mr-2"></span> High Risk (1)
+                    </div>
+<div class="flex items-center font-label-sm text-on-surface">
+<span class="w-2 h-2 bg-status-warning rounded-full mr-2"></span> Moderate (2)
+                    </div>
+<div class="flex items-center font-label-sm text-on-surface">
+<span class="w-2 h-2 bg-status-success rounded-full mr-2"></span> Control (12)
+                    </div>
+</div>
+</div>
+</section>
+</main>
+<script>
+        // Simple Micro-interactions
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.classList.add('scale-95');
+            });
+            button.addEventListener('mouseup', () => {
+                button.classList.remove('scale-95');
+            });
+            button.addEventListener('mouseleave', () => {
+                button.classList.remove('scale-95');
+            });
+        });
+
+        // Search highlight logic simulation
+        const searchInput = document.querySelector('input[placeholder="Search WBS..."]');
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.opacity = text.includes(term) ? '1' : '0.2';
+            });
+        });
+    </script>
+</body></html>

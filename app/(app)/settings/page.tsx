@@ -1,12 +1,17 @@
+import { redirect } from 'next/navigation';
 import { PageShell, Badge, StatRow } from '@/components/ui';
 import { SupabaseConnectionPanel } from '@/components/supabase-connection-panel';
 import { UserManagementPanel } from '@/components/user-management-panel';
 import { AdminResetPanel } from '@/components/admin-reset-panel';
-import { getCurrentAppUser } from '@/lib/current-user';
+import { getCurrentAppUser, canAccessSettings } from '@/lib/current-user';
 
 export default async function SettingsPage() {
   const currentUser = await getCurrentAppUser();
+  if (!canAccessSettings(currentUser?.role)) {
+    redirect('/dashboard');
+  }
   const canReset = currentUser?.role === 'Admin';
+
   const envStatus: Array<[string, boolean]> = [
     ['NEXT_PUBLIC_SUPABASE_URL', Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL)],
     ['NEXT_PUBLIC_SUPABASE_ANON_KEY', Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)],

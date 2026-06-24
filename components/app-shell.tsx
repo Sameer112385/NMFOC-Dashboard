@@ -8,8 +8,9 @@ import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'sap-cn41-sidebar-open';
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, userRole }: { children: React.ReactNode; userRole?: string | null }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -29,34 +30,51 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [sidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-bg">
-      <Sidebar open={sidebarOpen} />
+    <div className="min-h-screen bg-bg text-text">
+      <Sidebar open={sidebarOpen} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} userRole={userRole} />
+
+      {mobileOpen ? (
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-30 bg-slate-950/35 backdrop-blur-[1px] lg:hidden"
+          aria-label="Close navigation"
+        />
+      ) : null}
 
       <div
         className={cn(
           'min-h-screen transition-[margin-left] duration-300 ease-out',
-          sidebarOpen ? 'lg:ml-72' : 'lg:ml-0',
+          sidebarOpen ? 'lg:ml-72' : 'lg:ml-[92px]',
         )}
       >
-        <Topbar
-          onToggleSidebar={() => setSidebarOpen((value) => !value)}
-          sidebarOpen={sidebarOpen}
-        />
-        <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+        <Topbar onOpenMobile={() => setMobileOpen(true)} sidebarOpen={sidebarOpen} />
+        <main className="px-4 pb-8 pt-5 md:px-6 lg:px-8">
+          <div className="w-full">{children}</div>
+        </main>
       </div>
 
       <button
         type="button"
         onClick={() => setSidebarOpen((value) => !value)}
         className={cn(
-          'fixed left-3 top-3 z-50 inline-flex items-center gap-2 rounded-full border border-line/70 bg-panel/80 px-3 py-2 text-xs text-text backdrop-blur-xl hover:bg-panel2/80 lg:top-4',
-          sidebarOpen ? 'lg:left-[17rem]' : 'lg:left-3',
+          'fixed top-[26px] z-50 hidden h-8 w-8 items-center justify-center rounded-lg border border-line bg-panel shadow-sm text-muted hover:text-accent hover:border-accent/40 hover:bg-panel2 transition-all lg:inline-flex',
+          sidebarOpen ? 'left-[272px]' : 'left-[76px]',
         )}
+        aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
       >
         {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        <span className="hidden sm:inline">{sidebarOpen ? 'Collapse' : 'Open'} menu</span>
-        <Menu className="h-4 w-4 sm:hidden" />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        className="fixed left-4 top-4 z-40 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-panel shadow-sm text-text lg:hidden hover:bg-panel2"
+        aria-label="Open navigation"
+      >
+        <Menu className="h-4 w-4" />
       </button>
     </div>
   );
 }
+

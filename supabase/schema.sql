@@ -79,6 +79,7 @@ create table if not exists gr55_rows (
   cost_category text,
   cost_element text,
   cost_center text,
+  purchasing_document text,
   amount numeric not null default 0,
   currency text,
   raw_data_json jsonb not null default '{}'::jsonb

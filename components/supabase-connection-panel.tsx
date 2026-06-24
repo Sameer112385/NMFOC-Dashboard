@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { Badge, surfaceCard } from '@/components/ui';
+import { cn } from '@/lib/utils';
 
 type SupabaseStatus = {
   configured: boolean;
@@ -105,53 +106,57 @@ export function SupabaseConnectionPanel() {
   }
 
   return (
-    <div className={`p-5 ${surfaceCard}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className={cn("p-6", surfaceCard)}>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line/30 pb-5">
         <div>
-          <h3 className="text-lg font-semibold text-text">Supabase Connection</h3>
-          <p className="mt-1 text-sm text-muted">
+          <div className="section-kicker text-accent font-bold tracking-[0.12em]">Cloud Storage</div>
+          <h3 className="mt-1 text-lg font-bold text-text">Supabase Connection</h3>
+          <p className="mt-1 text-xs text-muted/90 font-medium">
             Save your Supabase URL and keys here to connect the app without relying only on env files.
           </p>
         </div>
         <Badge tone={status?.configured ? 'success' : 'warning'}>
-          {status?.configured ? 'Connected' : 'Not connected'}
+          {status?.configured ? 'Connected' : 'Disconnected'}
         </Badge>
       </div>
 
-      <form onSubmit={handleSave} className="mt-4 grid gap-3 md:grid-cols-2">
-        <label className="md:col-span-2">
-          <span className="mb-2 block text-sm text-muted">Supabase URL</span>
+      <form onSubmit={handleSave} className="mt-6 space-y-4">
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-muted">Supabase URL</span>
           <input
             value={supabaseUrl}
             onChange={(event) => setSupabaseUrl(event.target.value)}
             placeholder="https://xxxxx.supabase.co"
-            className="w-full rounded-2xl border border-line/70 bg-panel/70 px-4 py-3 text-sm text-text outline-none placeholder:text-muted/60 focus:border-accent/50"
+            className="w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-xs text-text outline-none placeholder:text-muted/60 focus:border-accent focus:ring-1 focus:ring-accent transition shadow-sm"
           />
         </label>
-        <label>
-          <span className="mb-2 block text-sm text-muted">Anon Key</span>
-          <input
-            value={supabaseAnonKey}
-            onChange={(event) => setSupabaseAnonKey(event.target.value)}
-            placeholder={status?.hasAnonKey ? 'Already saved - leave blank to keep' : 'Paste anon key'}
-            className="w-full rounded-2xl border border-line/70 bg-panel/70 px-4 py-3 text-sm text-text outline-none placeholder:text-muted/60 focus:border-accent/50"
-          />
-        </label>
-        <label>
-          <span className="mb-2 block text-sm text-muted">Service Role Key</span>
-          <input
-            value={supabaseServiceRoleKey}
-            onChange={(event) => setSupabaseServiceRoleKey(event.target.value)}
-            placeholder={status?.hasServiceRoleKey ? 'Already saved - leave blank to keep' : 'Optional for admin workflows'}
-            className="w-full rounded-2xl border border-line/70 bg-panel/70 px-4 py-3 text-sm text-text outline-none placeholder:text-muted/60 focus:border-accent/50"
-          />
-        </label>
+        
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-muted">Anon Key</span>
+            <input
+              value={supabaseAnonKey}
+              onChange={(event) => setSupabaseAnonKey(event.target.value)}
+              placeholder={status?.hasAnonKey ? 'Already saved — leave blank to keep' : 'Paste anon key'}
+              className="w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-xs text-text outline-none placeholder:text-muted/60 focus:border-accent focus:ring-1 focus:ring-accent transition shadow-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-muted">Service Role Key</span>
+            <input
+              value={supabaseServiceRoleKey}
+              onChange={(event) => setSupabaseServiceRoleKey(event.target.value)}
+              placeholder={status?.hasServiceRoleKey ? 'Already saved — leave blank to keep' : 'Optional for admin workflows'}
+              className="w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-xs text-text outline-none placeholder:text-muted/60 focus:border-accent focus:ring-1 focus:ring-accent transition shadow-sm"
+            />
+          </label>
+        </div>
 
-        <div className="md:col-span-2 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 pt-2">
           <button
             type="submit"
             disabled={loading}
-            className="rounded-2xl bg-accent px-4 py-3 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60"
+            className="rounded-lg bg-accent text-white px-4 py-2.5 text-xs font-semibold shadow hover:bg-accent-hover active:scale-[0.98] transition disabled:opacity-60"
           >
             {loading ? 'Saving...' : 'Save & Test Connection'}
           </button>
@@ -159,22 +164,27 @@ export function SupabaseConnectionPanel() {
             type="button"
             onClick={handleClear}
             disabled={loading}
-            className="rounded-2xl border border-line/70 px-4 py-3 text-sm font-medium text-text transition hover:bg-panel2/80 disabled:opacity-60"
+            className="rounded-lg border border-line bg-panel/60 px-4 py-2.5 text-xs font-semibold text-text hover:bg-panel2/80 active:scale-[0.98] transition disabled:opacity-60"
           >
             Clear saved connection
           </button>
-          {message ? <span className="text-sm text-muted">{message}</span> : null}
+          {message ? (
+            <span className="text-xs font-semibold text-accent/90 bg-accent/5 border border-accent/10 px-3.5 py-2.5 rounded-lg ml-2">
+              {message}
+            </span>
+          ) : null}
         </div>
       </form>
 
-      <div className={`mt-4 p-4 text-sm text-muted ${surfaceCard}`}>
-        <div className="grid gap-2 md:grid-cols-3">
-          <div>Configured: {status?.configured ? 'Yes' : 'No'}</div>
-          <div>Anon key: {status?.hasAnonKey ? 'Saved' : 'Missing'}</div>
-          <div>Service role: {status?.hasServiceRoleKey ? 'Saved' : 'Missing'}</div>
+      <div className="mt-5 rounded-lg border border-line bg-panel2/10 p-4 text-xs">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div><span className="font-semibold text-muted">Configured:</span> <span className="font-bold text-text">{status?.configured ? 'Yes' : 'No'}</span></div>
+          <div><span className="font-semibold text-muted">Anon key:</span> <span className="font-bold text-text">{status?.hasAnonKey ? 'Saved' : 'Missing'}</span></div>
+          <div><span className="font-semibold text-muted">Service role:</span> <span className="font-bold text-text">{status?.hasServiceRoleKey ? 'Saved' : 'Missing'}</span></div>
         </div>
-        {status?.savedAt ? <div className="mt-2">Last saved: {new Date(status.savedAt).toLocaleString()}</div> : null}
+        {status?.savedAt ? <div className="mt-3 text-[11px] text-muted font-medium">Last saved: {new Date(status.savedAt).toLocaleString()}</div> : null}
       </div>
     </div>
   );
 }
+

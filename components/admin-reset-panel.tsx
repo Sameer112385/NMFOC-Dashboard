@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { surfaceCard, Badge } from '@/components/ui';
+import { cn } from '@/lib/utils';
 
 type AdminAction = 'backup' | 'app_data' | 'full_reset';
 
@@ -85,61 +86,74 @@ export function AdminResetPanel({ canReset }: { canReset: boolean }) {
   }
 
   return (
-    <div className={`p-5 ${surfaceCard} xl:col-span-2`}>
-      <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-4">
+    <div className={cn("p-6 xl:col-span-2", surfaceCard)}>
+      <div className="flex items-center justify-between gap-4 border-b border-line/30 pb-5">
         <div>
-          <h3 className="text-lg font-semibold text-text">Danger Zone</h3>
-          <p className="mt-1 text-sm text-muted">Use these actions only when you need to back up data, wipe project data, or start over completely.</p>
+          <div className="section-kicker text-danger font-bold tracking-[0.12em]">System Operations</div>
+          <h3 className="mt-1 text-lg font-bold text-text">Danger Zone</h3>
+          <p className="mt-1 text-xs text-muted/90 font-medium">Use these actions only when you need to back up data, wipe project data, or start over completely.</p>
         </div>
         <Badge tone={canReset ? 'warning' : 'default'}>{canReset ? 'Admin Only' : 'No Access'}</Badge>
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <button
           type="button"
           onClick={downloadBackup}
           disabled={!canReset || loading !== null}
-          className="rounded-2xl border border-accent/30 bg-accent/5 px-4 py-4 text-left transition hover:bg-accent/10 disabled:opacity-50"
+          className="group relative rounded-xl border border-accent/20 bg-gradient-to-br from-accent/5 via-panel to-panel p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
         >
-          <div className="text-sm font-semibold text-accent">Backup All Data (Excel)</div>
-          <div className="mt-2 text-sm text-muted">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent/40 via-accent to-accent/40 rounded-t-xl" />
+          <div className="text-sm font-bold text-accent">Backup All Data (Excel)</div>
+          <p className="mt-3 text-xs leading-relaxed text-muted/90 font-medium">
             Exports projects, uploads, users, calculations, and admin data into one workbook before you reset anything.
+          </p>
+          <div className="mt-4 text-xs font-bold text-accent transition-all group-hover:translate-x-0.5">
+            {loading === 'backup' ? 'Preparing backup...' : 'Download workbook →'}
           </div>
-          <div className="mt-3 text-xs font-medium text-accent">{loading === 'backup' ? 'Preparing backup...' : 'Download workbook'}</div>
         </button>
 
         <button
           type="button"
           onClick={() => runReset('app_data')}
           disabled={!canReset || loading !== null}
-          className="rounded-2xl border border-warning/30 bg-warning/5 px-4 py-4 text-left transition hover:bg-warning/10 disabled:opacity-50"
+          className="group relative rounded-xl border border-warning/20 bg-gradient-to-br from-warning/5 via-panel to-panel p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
         >
-          <div className="text-sm font-semibold text-warning">Reset App Data</div>
-          <div className="mt-2 text-sm text-muted">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-warning/40 via-warning to-warning/40 rounded-t-xl" />
+          <div className="text-sm font-bold text-warning">Reset App Data</div>
+          <p className="mt-3 text-xs leading-relaxed text-muted/90 font-medium">
             Deletes projects, uploads, revenue outputs, PM updates, risks, snapshots, and storage files. Keeps user accounts intact.
+          </p>
+          <div className="mt-4 text-xs font-bold text-warning transition-all group-hover:translate-x-0.5">
+            {loading === 'app_data' ? 'Resetting...' : 'Run reset →'}
           </div>
-          <div className="mt-3 text-xs font-medium text-warning">{loading === 'app_data' ? 'Resetting...' : 'Run reset'}</div>
         </button>
 
         <button
           type="button"
           onClick={() => runReset('full_reset')}
           disabled={!canReset || loading !== null}
-          className="rounded-2xl border border-danger/30 bg-danger/5 px-4 py-4 text-left transition hover:bg-danger/10 disabled:opacity-50"
+          className="group relative rounded-xl border border-danger/20 bg-gradient-to-br from-danger/5 via-panel to-panel p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
         >
-          <div className="text-sm font-semibold text-danger">Full Reset</div>
-          <div className="mt-2 text-sm text-muted">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-danger/40 via-danger to-danger/40 rounded-t-xl" />
+          <div className="text-sm font-bold text-danger">Full Reset</div>
+          <p className="mt-3 text-xs leading-relaxed text-muted/90 font-medium">
             Deletes app data, user profiles, and Supabase auth users, then clears storage objects in the main bucket.
+          </p>
+          <div className="mt-4 text-xs font-bold text-danger transition-all group-hover:translate-x-0.5">
+            {loading === 'full_reset' ? 'Resetting...' : 'Run full reset →'}
           </div>
-          <div className="mt-3 text-xs font-medium text-danger">{loading === 'full_reset' ? 'Resetting...' : 'Run full reset'}</div>
         </button>
       </div>
 
-      {message ? <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-muted">{message}</div> : null}
+      {message ? (
+        <div className="mt-5 rounded-lg border border-line bg-panel2/30 px-4 py-3 text-xs font-semibold text-text">
+          {message}
+        </div>
+      ) : null}
     </div>
   );
 }
-
 function getDownloadFileName(contentDisposition: string) {
   const match = contentDisposition.match(/filename="?([^"]+)"?/i);
   return match?.[1] ?? null;
