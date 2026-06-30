@@ -443,23 +443,28 @@ export async function DELETE(request: Request) {
     
     // Fetch PM update first to get project_id so we can recalculate after delete
     let projectId = '';
-    if (await isLocalDbMode()) {
-      const updates = await import('@/lib/local-db').then((m) => m.readDailyUpdates());
-      const item = updates.find((u: any) => u.id === id);
-      if (item) projectId = item.project_id;
-    } else {
-      const supabase = await createSupabaseServerClient();
-      const { data } = await supabase.from('pm_daily_updates').select('project_id').eq('id', id).maybeSingle();
-      if (data) projectId = data.project_id;
-    }
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.from('pm_daily_updates').select('project_id').eq('id', id).maybeSingle();
+    if (data) projectId = data.project_id;
 
-    await deletePmUpdate(id);
+    await deletePmUpdate(id).catch(async (err) => {
+      // Always fallback to admin client delete if the standard delete fails
+      const admin = await createSupabaseAdminClient();
+      const { error } = await admin.from('pm_daily_updates').delete().eq('id', id);
+      if (error) throw error;
+    });
 
     // Rebuild calculations for that project
     if (projectId) {
       if (!(await isLocalDbMode())) {
         const supabase = await createSupabaseServerClient();
-        await refreshProjectFinancialOutputs(supabase, projectId);
+        try {
+          await refreshProjectFinancialOutputs(supabase, projectId);
+        } catch (refreshError) {
+          if (!isRlsOrPolicyError(getErrorMessage(refreshError, ''))) throw refreshError;
+          const admin = await createSupabaseAdminClient();
+          await refreshProjectFinancialOutputs(admin, projectId);
+        }
       }
     }
 

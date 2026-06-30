@@ -13,10 +13,12 @@ import {
   TopWbsChart,
   RevenueSplitChart,
   PocChart,
+  RevenueTrendChart,
 } from "@/components/charts";
 import { getEffectivePendingCost } from "@/lib/pm-posting";
 import { Briefcase, Coins, Percent, TrendingUp, Activity, ShieldAlert, DollarSign, Filter } from "lucide-react";
 import { TrendAnalysisPanel } from "@/components/trend-analysis-panel";
+import { buildTrendData } from "@/lib/trends";
 import { MultiWbsSelect } from "@/components/multi-wbs-select";
 import type {
   DailyUpdate,
@@ -35,12 +37,14 @@ function StatCard({
   icon: Icon,
   tone = "default",
   hint,
+  group,
 }: {
   title: string;
   value: string;
   icon: any;
   tone?: "default" | "accent" | "success" | "warning" | "danger";
   hint?: string;
+  group?: string;
 }) {
   const toneClasses = {
     default: "border-line/80 bg-panel/95",
@@ -50,12 +54,35 @@ function StatCard({
     danger: "border-danger/25 bg-gradient-to-br from-danger/8 via-panel to-panel2/95",
   }[tone];
 
+  const borderGradient = {
+    default: "via-muted/35",
+    accent: "via-accent/35",
+    success: "via-success/35",
+    warning: "via-warning/35",
+    danger: "via-danger/35",
+  }[tone];
+
+  const iconColor = {
+    default: "text-muted/80",
+    accent: "text-accent",
+    success: "text-success",
+    warning: "text-warning",
+    danger: "text-danger",
+  }[tone];
+
+  const groupBadge = group ? {
+    cost: <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Cost</span>,
+    revenue: <span className="text-[9px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Revenue</span>,
+    margin: <span className="text-[9px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Margin</span>,
+    progress: <span className="text-[9px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Progress</span>,
+  }[group.toLowerCase()] : null;
+
   return (
     <div className={`relative overflow-hidden rounded-3xl border p-4 shadow-card ${toneClasses}`}>
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-accent/45 to-transparent opacity-65" />
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent ${borderGradient} to-transparent opacity-65`} />
       <div className="flex items-center justify-between gap-2">
         <span className="section-kicker text-muted">{title}</span>
-        <Icon className="h-4.5 w-4.5 text-accent" />
+        {groupBadge || <Icon className={`h-4.5 w-4.5 ${iconColor}`} />}
       </div>
       <div className="data-value mt-4 text-[1.18rem] font-semibold tracking-tight text-text sm:text-[1.3rem]">
         {value}
@@ -70,6 +97,7 @@ interface DashboardClientWorkspaceProps {
   projects: Project[];
   revenueRows: RevenueWBS[];
   costRows: RevenueWBS[]; // from getRevenueRows
+  allWbsRows: RevenueWBS[];
   updates: DailyUpdate[];
   manpowerRates: ProjectManpowerRate[];
   materialMasters: ProjectMaterialMaster[];
@@ -83,6 +111,7 @@ export function DashboardClientWorkspace({
   projects,
   revenueRows,
   costRows,
+  allWbsRows,
   updates,
   manpowerRates,
   materialMasters,
@@ -92,7 +121,7 @@ export function DashboardClientWorkspace({
 }: DashboardClientWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<"summary" | "trends">("summary");
   const [selectedWbs, setSelectedWbs] = useState<string[]>([]);
-  const [selectedPo, setSelectedPo] = useState<string>("");
+  const [selectedPos, setSelectedPos] = useState<string[]>([]);
 
   // Extract unique PO numbers from gr55Rows
   const poOptions = useMemo(() => {
@@ -101,21 +130,21 @@ export function DashboardClientWorkspace({
       const pd = String(r.purchasing_document || "").trim();
       if (pd) pos.add(pd);
     });
-    return ["", ...Array.from(pos).sort()];
+    return Array.from(pos).sort();
   }, [gr55Rows]);
 
-  // Determine WBS codes matching the selected PO
+  // Determine WBS codes matching the selected POs
   const wbsCodesForSelectedPo = useMemo(() => {
-    if (!selectedPo) return null;
+    if (selectedPos.length === 0) return null;
     const codes = new Set<string>();
     gr55Rows.forEach((r) => {
       const pd = String(r.purchasing_document || "").trim();
-      if (pd === selectedPo) {
+      if (selectedPos.includes(pd)) {
         codes.add(r.wbs_code.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
       }
     });
     return codes;
-  }, [gr55Rows, selectedPo]);
+  }, [gr55Rows, selectedPos]);
 
   // WBS options strictly from WBS Master
   const wbsOptions = useMemo(() => {
@@ -128,7 +157,7 @@ export function DashboardClientWorkspace({
       .sort((a, b) => a.value.localeCompare(b.value));
   }, [projectWbsMaster]);
 
-  // Filter costRows and revenueRows based on selected PO and WBS
+  // Filter costRows and revenueRows based on selected POs and WBS
   const filteredCostRows = useMemo(() => {
     let list = costRows;
     if (wbsCodesForSelectedPo) {
@@ -178,8 +207,8 @@ export function DashboardClientWorkspace({
   const forecastCost = filteredCostRows.reduce((sum, row) => sum + row.forecast_cost, 0) || actualCost;
   const forecastMargin = plannedRevenue - forecastCost;
   const forecastMarginPercent = plannedRevenue > 0 ? (forecastMargin / plannedRevenue) * 100 : 0;
-  const pocPercent = clampPercent(plannedCost > 0 ? (actualCost / plannedCost) * 100 : 0);
-  const sapPocPercent = clampPercent(plannedCost > 0 ? (sapActualCost / plannedCost) * 100 : 0);
+  const pocPercent = clampPercent(plannedRevenue > 0 ? (recognizedRevenue / plannedRevenue) * 100 : 0);
+  const sapPocPercent = clampPercent(plannedRevenue > 0 ? (sapRecognizedRevenue / plannedRevenue) * 100 : 0);
   const sapMargin = plannedRevenue - sapActualCost;
   const managementMargin = plannedRevenue - actualCost;
   const mtdActual = filteredCostRows.reduce((sum, row) => sum + row.mtd_actual_cost, 0);
@@ -189,6 +218,20 @@ export function DashboardClientWorkspace({
   const currentMonthRevenue = mtdRevenue;
   const openingRecognizedRevenue = filteredRevenueRows.reduce((sum, row) => sum + (row.opening_recognized_revenue ?? 0), 0);
   const latestPmUpdate = updates[0] ?? null;
+
+  const trendData = useMemo(() => {
+    return buildTrendData({
+      projectId: project.id,
+      costRows: allWbsRows,
+      gr55Rows,
+      updates,
+      wbsMaster: projectWbsMaster,
+      costElementControl,
+      filterWbsCodes: selectedWbs,
+      periodType: 'month',
+      selectedPos,
+    });
+  }, [project.id, allWbsRows, gr55Rows, updates, projectWbsMaster, costElementControl, selectedWbs, selectedPos]);
 
   const risks = buildRiskAlerts(filteredRevenueRows);
   const riskChartData = Array.from(
@@ -225,7 +268,7 @@ export function DashboardClientWorkspace({
       {activeTab === "summary" ? (
         <div className="space-y-6">
           {/* Summary WBS Filter Bar (Hidden on Print) */}
-          <div className="no-print rounded-2xl border border-line/80 bg-panel/90 p-4 shadow-sm backdrop-blur-md">
+          <div className="no-print relative z-30 rounded-2xl border border-line/80 bg-panel/90 p-4 shadow-sm backdrop-blur-md">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <Filter className="h-4.5 w-4.5 text-accent" />
@@ -242,29 +285,37 @@ export function DashboardClientWorkspace({
             </div>
           </div>
 
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-            <StatCard title="Planned Revenue" value={formatCurrency(plannedRevenue)} icon={DollarSign} tone="accent" />
-            <StatCard
-              title="Recognized Revenue"
-              value={formatCurrency(recognizedRevenue)}
-              icon={TrendingUp}
-              tone="success"
-            />
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+            {/* Cost Cards */}
+            <StatCard title="Planned Cost" value={formatCurrency(plannedCost)} icon={Briefcase} tone="accent" group="cost" />
             <StatCard
               title="Management Actual Cost"
               value={formatCurrency(actualCost)}
               icon={Coins}
               tone="accent"
+              group="cost"
               hint="GR55 actual + active PM simulated cost"
             />
+
+            {/* Revenue Cards */}
+            <StatCard title="Planned Revenue" value={formatCurrency(plannedRevenue)} icon={DollarSign} tone="success" group="revenue" />
+            <StatCard
+              title="Recognized Revenue"
+              value={formatCurrency(recognizedRevenue)}
+              icon={TrendingUp}
+              tone="success"
+              group="revenue"
+            />
+
+            {/* Margin & Progress Cards */}
             <StatCard
               title="Forecast Margin"
               value={formatCurrency(forecastMargin)}
               icon={Percent}
               tone={forecastMargin >= 0 ? "success" : "danger"}
+              group="margin"
             />
-            <StatCard title="Planned Cost" value={formatCurrency(plannedCost)} icon={Briefcase} />
-            <StatCard title="POC %" value={formatPercent(pocPercent)} icon={Percent} tone="success" />
+            <StatCard title="POC %" value={formatPercent(pocPercent)} icon={Percent} tone="success" group="progress" />
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
@@ -321,6 +372,13 @@ export function DashboardClientWorkspace({
           ) : (
             <div className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
+                <RevenueTrendChart
+                  data={trendData.map((pt) => ({
+                    ...pt,
+                    recognizedRevenue: pt.forecastRevenue,
+                    cumulativeRecognizedRevenue: pt.cumulativeForecastRevenue,
+                  }))}
+                />
                 <RevenueSplitChart recognized={recognizedRevenue} remaining={Math.max(0, remainingRevenue)} total={plannedRevenue} />
                 <PocChart data={filteredCostRows.map((row) => ({ name: row.wbs_code, value: row.poc_percent }))} />
                 <RevenueVsSimulationChart
@@ -342,7 +400,7 @@ export function DashboardClientWorkspace({
                     .slice()
                     .sort((a, b) => b.recognized_revenue_to_date - a.recognized_revenue_to_date)
                     .slice(0, 6)
-                    .map((row) => ({ name: row.wbs_code, value: row.recognized_revenue_to_date }))}
+                    .map((row) => ({ name: row.wbs_description || row.wbs_code, value: row.recognized_revenue_to_date }))}
                 />
               </div>
 
@@ -352,8 +410,8 @@ export function DashboardClientWorkspace({
                 <div className="mt-4">
                   <DashboardWbsFilter
                     rows={filteredCostRows}
-                    selectedPo={selectedPo}
-                    setSelectedPo={setSelectedPo}
+                    selectedPos={selectedPos}
+                    setSelectedPos={setSelectedPos}
                     poOptions={poOptions}
                   />
                 </div>
@@ -435,13 +493,13 @@ export function DashboardClientWorkspace({
         <TrendAnalysisPanel
           currentProjectId={project.id}
           projects={projects}
-          costRows={costRows}
+          costRows={allWbsRows}
           gr55Rows={gr55Rows}
           updates={updates}
           wbsMaster={projectWbsMaster}
           costElementControl={costElementControl}
-          selectedPo={selectedPo}
-          setSelectedPo={setSelectedPo}
+          selectedPos={selectedPos}
+          setSelectedPos={setSelectedPos}
           poOptions={poOptions}
         />
       )}

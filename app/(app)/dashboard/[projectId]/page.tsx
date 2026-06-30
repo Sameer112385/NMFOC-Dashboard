@@ -66,6 +66,7 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
         projects={projects}
         revenueRows={revenueRows}
         costRows={costRows}
+        allWbsRows={costRowsRaw}
         updates={updates}
         manpowerRates={manpowerRates}
         materialMasters={materialMasters}

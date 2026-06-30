@@ -81,8 +81,8 @@ a {
 
 /* Custom scrollbar for webkit */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -152,5 +152,36 @@ html[data-theme='dark'] .bg-black\/80 {
 html[data-theme='dark'] .border-white\/5,
 html[data-theme='dark'] .border-white\/10 {
   border-color: rgb(var(--color-line) / 0.6) !important;
+}
+
+/* Responsive Mobile Layout Fixes */
+@media (max-width: 1024px) {
+  main {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 4.5rem !important; /* Allow top menu toggle breathing room */
+  }
+
+  .sticky {
+    position: static !important; /* Avoid tab overlaps on mobile screens */
+  }
+
+  /* Force charts responsive scaling inside thin containers */
+  .recharts-responsive-container {
+    min-height: 240px !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .section-kicker {
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+  }
+
+  /* Make sure wide custom data tables scroll internally without layout breaking */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 

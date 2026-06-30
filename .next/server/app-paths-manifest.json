@@ -1,7 +1,8 @@
 {
+  "/api/settings/supabase/route": "app/api/settings/supabase/route.js",
+  "/api/admin/users/route": "app/api/admin/users/route.js",
   "/(auth)/login/page": "app/(auth)/login/page.js",
   "/(app)/projects/page": "app/(app)/projects/page.js",
-  "/(app)/upload-cn41/page": "app/(app)/upload-cn41/page.js",
-  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
-  "/(app)/dashboard/[projectId]/page": "app/(app)/dashboard/[projectId]/page.js"
+  "/(app)/settings/page": "app/(app)/settings/page.js",
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js"
 }

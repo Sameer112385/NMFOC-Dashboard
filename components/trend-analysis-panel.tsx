@@ -37,6 +37,7 @@ import * as XLSX from "xlsx";
 import { buildTrendData, type TrendDataPoint } from "@/lib/trends";
 import { getEffectivePendingCost } from "@/lib/pm-posting";
 import { MultiWbsSelect } from "@/components/multi-wbs-select";
+import { DarkSelect } from "@/components/dark-select";
 import { formatCurrency, formatPercent, formatCompactNumber } from "@/lib/utils";
 import type {
   DailyUpdate,
@@ -78,8 +79,8 @@ interface TrendAnalysisPanelProps {
   updates: DailyUpdate[];
   wbsMaster: ProjectWbsMaster[];
   costElementControl: ProjectCostElementControl[];
-  selectedPo: string;
-  setSelectedPo: (val: string) => void;
+  selectedPos: string[];
+  setSelectedPos: (val: string[]) => void;
   poOptions: string[];
 }
 
@@ -91,8 +92,8 @@ export function TrendAnalysisPanel({
   updates,
   wbsMaster,
   costElementControl,
-  selectedPo,
-  setSelectedPo,
+  selectedPos,
+  setSelectedPos,
   poOptions,
 }: TrendAnalysisPanelProps) {
   // Filters State (Project & Customer are removed as they are contextually fixed)
@@ -163,9 +164,8 @@ export function TrendAnalysisPanel({
       costElementControl,
       filterWbsCodes: selectedWbs.length > 0 ? selectedWbs : undefined,
       periodType,
-      selectedPo,
     });
-  }, [currentProjectId, costRows, gr55Rows, updates, wbsMaster, costElementControl, selectedWbs, periodType, selectedPo]);
+  }, [currentProjectId, costRows, gr55Rows, updates, wbsMaster, costElementControl, selectedWbs, periodType]);
 
   // Distinct periods generated in the base trend data
   const distinctPeriods = useMemo(() => {
@@ -222,7 +222,7 @@ export function TrendAnalysisPanel({
       const isActive = config ? config.is_active !== false : true;
       if (isActive === false || includeInCost === false) return false;
       if (!isCostElementIncluded(row.cost_element ?? "")) return false;
-      if (selectedPo && String(row.purchasing_document || "").trim() !== selectedPo) return false;
+      if (selectedPos.length > 0 && !selectedPos.includes(String(row.purchasing_document || "").trim())) return false;
       return matchesWbsFilter(row.wbs_code);
     });
 
@@ -323,7 +323,7 @@ export function TrendAnalysisPanel({
       highestCostPercentage,
       isWbsGrouped,
     };
-  }, [gr55Rows, selectedWbs, wbsMaster, costElementControl, periodType, trendData, costViewMode, selectedPo]);
+  }, [gr55Rows, selectedWbs, wbsMaster, costElementControl, periodType, trendData, costViewMode, selectedPos]);
 
   // Subcontractor Performance by PO Number
   const poPerformanceData = useMemo(() => {
@@ -366,7 +366,7 @@ export function TrendAnalysisPanel({
       if (!isActive || !includeInCost) return false;
       if (!isCostElementIncluded(row.cost_element ?? "")) return false;
       if (!matchesWbsFilter(row.wbs_code)) return false;
-      if (selectedPo && String(row.purchasing_document || "").trim() !== selectedPo) return false;
+      if (selectedPos.length > 0 && !selectedPos.includes(String(row.purchasing_document || "").trim())) return false;
       const cat = String(row.cost_category || "").toLowerCase();
       return cat.includes("subcontract");
     });
@@ -426,7 +426,7 @@ export function TrendAnalysisPanel({
     });
 
     return { uniquePOs, chartData, poTotals, grandTotal, poMeta };
-  }, [gr55Rows, selectedWbs, wbsMaster, costElementControl, periodType, trendData, costViewMode, selectedPo]);
+  }, [gr55Rows, selectedWbs, wbsMaster, costElementControl, periodType, trendData, costViewMode, selectedPos]);
 
   // KPI Calculations in the active range
   const kpis = useMemo(() => {
@@ -440,15 +440,21 @@ export function TrendAnalysisPanel({
         marginPercent: 0,
         costGrowth: 0,
         revenueGrowth: 0,
+        inMonthCost: 0,
+        inMonthRevenue: 0,
+        activePeriodLabel: "",
+        plannedCost: 0,
+        plannedRevenue: 0,
+        pocPercent: 0,
       };
     }
 
     const latestPoint = trendData[trendData.length - 1]!;
 
-    const totalActualCost = trendData.reduce((sum, pt) => sum + pt.actualCost, 0);
-    const totalRecognizedRevenue = trendData.reduce((sum, pt) => sum + pt.recognizedRevenue, 0);
-    const totalForecastCost = trendData.reduce((sum, pt) => sum + pt.forecastCost, 0);
-    const totalForecastRevenue = trendData.reduce((sum, pt) => sum + pt.forecastRevenue, 0);
+    const totalActualCost = trendData.reduce((sum, pt) => sum + pt.forecastCost, 0);
+    const totalRecognizedRevenue = trendData.reduce((sum, pt) => sum + pt.forecastRevenue, 0);
+    const totalForecastCost = totalActualCost;
+    const totalForecastRevenue = totalRecognizedRevenue;
 
     const grossMargin = latestPoint.cumulativeForecastRevenue - latestPoint.cumulativeForecastCost;
     const marginPercent = latestPoint.cumulativeForecastRevenue > 0
@@ -459,6 +465,24 @@ export function TrendAnalysisPanel({
     const costGrowth = latestPoint.costGrowthPercent;
     const revenueGrowth = latestPoint.revenueGrowthPercent;
 
+    // In the Month calculations (latest point or selected period)
+    let activePoint = latestPoint;
+    if (selectedPeriod) {
+      const found = trendData.find((pt) => pt.period === selectedPeriod);
+      if (found) activePoint = found;
+    }
+
+    const inMonthCost = activePoint.forecastCost;
+    const inMonthRevenue = activePoint.forecastRevenue;
+    const activePeriodLabel = activePoint.period;
+
+    // Extract planned totals
+    const plannedCost = latestPoint.plannedCost ?? 0;
+    const plannedRevenue = latestPoint.plannedRevenue ?? 0;
+
+    // Calculate POC% based on Recognized Revenue / Planned Revenue
+    const pocPercent = plannedRevenue > 0 ? Math.min(100, (totalRecognizedRevenue / plannedRevenue) * 100) : 0;
+
     return {
       totalActualCost,
       totalRecognizedRevenue,
@@ -468,12 +492,17 @@ export function TrendAnalysisPanel({
       marginPercent,
       costGrowth,
       revenueGrowth,
+      inMonthCost,
+      inMonthRevenue,
+      activePeriodLabel,
+      plannedCost,
+      plannedRevenue,
+      pocPercent,
     };
-  }, [trendData]);
+  }, [trendData, selectedPeriod]);
 
-  // Drill-down Contributing Transactions
   const rawDrilldownData = useMemo(() => {
-    if (!selectedPeriod) return { sap: [], pm: [], wbs: [], category: [] };
+    if (!selectedPeriod && selectedPos.length === 0) return { sap: [], pm: [], wbs: [], category: [] };
 
     const cleanPeriod = selectedPeriod;
 
@@ -515,8 +544,14 @@ export function TrendAnalysisPanel({
       const isActive = config ? config.is_active !== false : true;
       if (isActive === false || includeInCost === false) return false;
       if (!isCostElementIncluded(row.cost_element ?? "")) return false;
-      if (selectedPo && String(row.purchasing_document || "").trim() !== selectedPo) return false;
-      return getPeriodKey(row.posting_date) === cleanPeriod;
+      if (selectedPos.length > 0 && !selectedPos.includes(String(row.purchasing_document || "").trim())) return false;
+      if (cleanPeriod) {
+        if (getPeriodKey(row.posting_date) !== cleanPeriod) return false;
+      } else {
+        if (startPeriod && getPeriodKey(row.posting_date) < startPeriod) return false;
+        if (endPeriod && getPeriodKey(row.posting_date) > endPeriod) return false;
+      }
+      return true;
     });
 
     // Apply specific view mode filters based on cost_category matching rules
@@ -542,7 +577,13 @@ export function TrendAnalysisPanel({
       if (!up.update_date) return false;
       const code = wbsIdToCodeMap.get(up.revenue_wbs_id) || up.revenue_wbs_id;
       if (!matchesWbsFilter(code)) return false;
-      return getPeriodKey(up.update_date) === cleanPeriod;
+      if (cleanPeriod) {
+        return getPeriodKey(up.update_date) === cleanPeriod;
+      } else {
+        if (startPeriod && getPeriodKey(up.update_date) < startPeriod) return false;
+        if (endPeriod && getPeriodKey(up.update_date) > endPeriod) return false;
+      }
+      return true;
     });
 
     // Group by WBS for this period
@@ -598,12 +639,14 @@ export function TrendAnalysisPanel({
     costRows,
     selectedWbs,
     periodType,
+    startPeriod,
+    endPeriod,
     wbsIdToCodeMap,
     wbsCodeToDescMap,
     wbsMaster,
     costElementControl,
     costViewMode,
-    selectedPo,
+    selectedPos,
   ]);
 
   // Filtered Drill-down Data by Search input
@@ -786,7 +829,7 @@ export function TrendAnalysisPanel({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {/* WBS Multi-Select Dropdown */}
           <div className="lg:col-span-2">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">WBS Elements (Multi-select)</label>
@@ -800,28 +843,6 @@ export function TrendAnalysisPanel({
               placeholder="All Project WBS"
             />
           </div>
-
-          {/* PO Number Select Filter */}
-          {poOptions.length > 1 && (
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">PO Number</label>
-              <select
-                value={selectedPo}
-                onChange={(e) => {
-                  setSelectedPo(e.target.value);
-                  setSelectedPeriod(null);
-                }}
-                className="w-full rounded-xl border border-line bg-panel2 px-3 py-2 text-xs font-semibold text-text focus:border-accent focus:outline-none font-mono"
-              >
-                <option value="">All POs</option>
-                {poOptions.filter(Boolean).map((po) => (
-                  <option key={po} value={po}>
-                    {po}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {/* Interval selection */}
           <div>
@@ -902,15 +923,29 @@ export function TrendAnalysisPanel({
           </div>
         </div>
       )}
-
       {/* 2. KPIs Metrics Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
+        {/* Planned Cost */}
+        <div className="surface-card p-4 relative overflow-hidden border border-line/80 bg-panel/95 rounded-3xl shadow-card print-card">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-accent/35 to-transparent" />
+          <div className="flex items-center justify-between text-muted">
+            <span className="section-kicker">Planned Cost</span>
+            <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Cost</span>
+          </div>
+          <div className="data-value mt-3 text-[1.22rem] font-semibold text-text">
+            {formatCurrency(kpis.plannedCost)}
+          </div>
+          <div className="mt-2 text-xs text-muted/70">
+            <span>Project baseline budget</span>
+          </div>
+        </div>
+
         {/* Actual Cost */}
         <div className="surface-card p-4 relative overflow-hidden border border-line/80 bg-panel/95 rounded-3xl shadow-card print-card">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-accent/35 to-transparent" />
           <div className="flex items-center justify-between text-muted">
-            <span className="section-kicker">Total Actual Cost</span>
-            <Coins className="h-4.5 w-4.5 text-accent" />
+            <span className="section-kicker">Actual Cost (GR55+PM)</span>
+            <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Cost</span>
           </div>
           <div className="data-value mt-3 text-[1.22rem] font-semibold text-text">
             {formatCurrency(kpis.totalActualCost)}
@@ -924,12 +959,42 @@ export function TrendAnalysisPanel({
           </div>
         </div>
 
-        {/* Recognized Revenue */}
+        {/* In the Month Actual Cost */}
+        <div className="surface-card p-4 relative overflow-hidden border border-line/80 bg-panel/95 rounded-3xl shadow-card print-card">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-accent/35 to-transparent" />
+          <div className="flex items-center justify-between text-muted">
+            <span className="section-kicker">In Month Cost ({kpis.activePeriodLabel})</span>
+            <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Cost</span>
+          </div>
+          <div className="data-value mt-3 text-[1.22rem] font-semibold text-text">
+            {formatCurrency(kpis.inMonthCost)}
+          </div>
+          <div className="mt-2 text-xs text-muted/70">
+            <span>Periodic cost for {kpis.activePeriodLabel}</span>
+          </div>
+        </div>
+
+        {/* Planned Revenue */}
         <div className="surface-card p-4 relative overflow-hidden border border-line/80 bg-panel/95 rounded-3xl shadow-card print-card">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-success/35 to-transparent" />
           <div className="flex items-center justify-between text-muted">
-            <span className="section-kicker">Recognized Revenue (SAP)</span>
-            <TrendingUp className="h-4.5 w-4.5 text-success" />
+            <span className="section-kicker">Planned Revenue</span>
+            <span className="text-[9px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Revenue</span>
+          </div>
+          <div className="data-value mt-3 text-[1.22rem] font-semibold text-text">
+            {formatCurrency(kpis.plannedRevenue)}
+          </div>
+          <div className="mt-2 text-xs text-muted/70">
+            <span>Project contract value</span>
+          </div>
+        </div>
+
+        {/* Actual Revenue */}
+        <div className="surface-card p-4 relative overflow-hidden border border-line/80 bg-panel/95 rounded-3xl shadow-card print-card">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-success/35 to-transparent" />
+          <div className="flex items-center justify-between text-muted">
+            <span className="section-kicker">Actual Revenue (GR55+PM)</span>
+            <span className="text-[9px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Revenue</span>
           </div>
           <div className="data-value mt-3 text-[1.22rem] font-semibold text-text">
             {formatCurrency(kpis.totalRecognizedRevenue)}
@@ -943,35 +1008,33 @@ export function TrendAnalysisPanel({
           </div>
         </div>
 
-        {/* Forecast Cost */}
-        <div className="surface-card p-4 relative overflow-hidden border border-line/80 bg-panel/95 rounded-3xl shadow-card print-card">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-accent/35 to-transparent" />
-          <div className="flex items-center justify-between text-muted">
-            <span className="section-kicker">Forecast Cost (SAP+PM)</span>
-            <Briefcase className="h-4.5 w-4.5 text-accent" />
-          </div>
-          <div className="data-value mt-3 text-[1.22rem] font-semibold text-text">
-            {formatCurrency(kpis.forecastCost)}
-          </div>
-          <div className="mt-2 text-xs text-muted/70 flex items-center gap-1">
-            <span>Forecast margin:</span>
-            <span className="font-bold text-text">{formatCurrency(kpis.grossMargin)}</span>
-          </div>
-        </div>
-
-        {/* Forecast Revenue */}
+        {/* In Month Revenue */}
         <div className="surface-card p-4 relative overflow-hidden border border-line/80 bg-panel/95 rounded-3xl shadow-card print-card">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-success/35 to-transparent" />
           <div className="flex items-center justify-between text-muted">
-            <span className="section-kicker">Forecast Revenue</span>
-            <DollarSign className="h-4.5 w-4.5 text-success" />
+            <span className="section-kicker">In Month Rev ({kpis.activePeriodLabel})</span>
+            <span className="text-[9px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Revenue</span>
           </div>
           <div className="data-value mt-3 text-[1.22rem] font-semibold text-text">
-            {formatCurrency(kpis.forecastRevenue)}
+            {formatCurrency(kpis.inMonthRevenue)}
           </div>
-          <div className="mt-2 text-xs text-muted/70 flex items-center gap-1">
-            <span>Projected margin %:</span>
-            <span className="font-bold text-success">{formatPercent(kpis.marginPercent)}</span>
+          <div className="mt-2 text-xs text-muted/70">
+            <span>Periodic revenue for {kpis.activePeriodLabel}</span>
+          </div>
+        </div>
+
+        {/* POC% */}
+        <div className="surface-card p-4 relative overflow-hidden border border-line/80 bg-panel/95 rounded-3xl shadow-card print-card">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-success/35 to-transparent" />
+          <div className="flex items-center justify-between text-muted">
+            <span className="section-kicker">POC %</span>
+            <span className="text-[9px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Progress</span>
+          </div>
+          <div className="data-value mt-3 text-[1.22rem] font-semibold text-text">
+            {formatPercent(kpis.pocPercent)}
+          </div>
+          <div className="mt-2 text-xs text-muted/70">
+            <span>Percentage of Completion</span>
           </div>
         </div>
       </div>
@@ -1025,7 +1088,7 @@ export function TrendAnalysisPanel({
                   <Tooltip contentStyle={chartTooltipStyle} formatter={formatTooltipValue} />
                   <Area
                     type="monotone"
-                    dataKey="cumulativeActualCost"
+                    dataKey="cumulativeForecastCost"
                     stroke="#f59e0b"
                     strokeWidth={2.5}
                     fillOpacity={1}
@@ -1052,7 +1115,7 @@ export function TrendAnalysisPanel({
                   <Tooltip contentStyle={chartTooltipStyle} formatter={formatTooltipValue} />
                   <Area
                     type="monotone"
-                    dataKey="actualCost"
+                    dataKey="forecastCost"
                     stroke="#f59e0b"
                     strokeWidth={2}
                     fillOpacity={1}
@@ -1112,7 +1175,7 @@ export function TrendAnalysisPanel({
                   <Tooltip contentStyle={chartTooltipStyle} formatter={formatTooltipValue} />
                   <Area
                     type="monotone"
-                    dataKey="cumulativeRecognizedRevenue"
+                    dataKey="cumulativeForecastRevenue"
                     stroke="#10b981"
                     strokeWidth={2.5}
                     fillOpacity={1}
@@ -1139,7 +1202,7 @@ export function TrendAnalysisPanel({
                   <Tooltip contentStyle={chartTooltipStyle} formatter={formatTooltipValue} />
                   <Area
                     type="monotone"
-                    dataKey="recognizedRevenue"
+                    dataKey="forecastRevenue"
                     stroke="#10b981"
                     strokeWidth={2}
                     fillOpacity={1}
@@ -1253,7 +1316,7 @@ export function TrendAnalysisPanel({
       </div>
 
       {/* 3b. Cost Element Analysis Section */}
-      <div className="surface-card p-6 border border-line/45 bg-panel/30 shadow-card rounded-3xl print-card">
+      <div className="surface-card p-6 border border-line/45 bg-panel/30 shadow-card rounded-3xl print-card relative z-20">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-line/30 pb-4 mb-6">
           <div>
             <h3 className="text-base font-bold text-text">Cost Element Analysis</h3>
@@ -1294,6 +1357,8 @@ export function TrendAnalysisPanel({
               ))}
             </div>
 
+
+
             {categoryTrendData.highestCostConsumer && (
               <div className="rounded-xl border border-warning/30 bg-warning/5 px-3 py-1.5 text-xs font-semibold text-warning flex items-center gap-2">
                 <Info className="h-4.5 w-4.5 text-warning shrink-0" />
@@ -1311,120 +1376,122 @@ export function TrendAnalysisPanel({
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Chart: Cost Element Breakdown Over Time */}
-          <div className="lg:col-span-2 space-y-3">
-            <div>
-              <h4 className="text-xs font-bold text-text">
-                {categoryTrendData.isWbsGrouped ? "WBS Element Breakdown Over Time" : "Cost Category Breakdown Over Time"}
-              </h4>
-              <p className="text-[10px] text-muted">
-                {categoryTrendData.isWbsGrouped
-                  ? "Stacked period actual cost contribution by WBS Element."
-                  : costViewMode === "all"
-                  ? "Stacked period actual cost contribution by category."
-                  : "Stacked period actual cost contribution by category \u2014 select WBS above to drill down by WBS."}
-              </p>
-            </div>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryTrendData.chartData} onClick={handleChartClick}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgb(var(--color-line) / 0.3)" />
-                  <XAxis dataKey="period" stroke="rgb(var(--color-muted) / 0.8)" fontSize={10} tickLine={false} />
-                  <YAxis
-                    stroke="rgb(var(--color-muted) / 0.8)"
-                    fontSize={10}
-                    tickLine={false}
-                    tickFormatter={formatYAxis}
-                  />
-                  <Tooltip contentStyle={chartTooltipStyle} formatter={formatTooltipValue} />
-                  <Legend verticalAlign="top" height={36} iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9 }} />
-                  {categoryTrendData.uniqueCategories.map((category, index) => (
-                    <Bar
-                      key={category}
-                      dataKey={category}
-                      stackId="a"
-                      fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
-                      name={
-                        categoryTrendData.isWbsGrouped
-                          ? (wbsCodeToDescMap.get(category) || category)
-                          : category
-                      }
+        {(costViewMode !== "subcontractor" || selectedPos.length === 1) && (
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Left Chart: Cost Element Breakdown Over Time */}
+            <div className="lg:col-span-2 space-y-3">
+              <div>
+                <h4 className="text-xs font-bold text-text">
+                  {categoryTrendData.isWbsGrouped ? "WBS Element Breakdown Over Time" : "Cost Category Breakdown Over Time"}
+                </h4>
+                <p className="text-[10px] text-muted">
+                  {categoryTrendData.isWbsGrouped
+                    ? "Stacked period actual cost contribution by WBS Element."
+                    : costViewMode === "all"
+                    ? "Stacked period actual cost contribution by category."
+                    : "Stacked period actual cost contribution by category \u2014 select WBS above to drill down by WBS."}
+                </p>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={categoryTrendData.chartData} onClick={handleChartClick}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgb(var(--color-line) / 0.3)" />
+                    <XAxis dataKey="period" stroke="rgb(var(--color-muted) / 0.8)" fontSize={10} tickLine={false} />
+                    <YAxis
+                      stroke="rgb(var(--color-muted) / 0.8)"
+                      fontSize={10}
+                      tickLine={false}
+                      tickFormatter={formatYAxis}
                     />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Right Chart: Ranked Cost Category Totals */}
-          <div className="space-y-3">
-            <div>
-              <h4 className="text-xs font-bold text-text">
-                {categoryTrendData.isWbsGrouped ? "WBS Element Consumption Ranking" : "Cost Category Consumption Ranking"}
-              </h4>
-              <p className="text-[10px] text-muted">
-                {categoryTrendData.isWbsGrouped ? "Total actual cost ranked by WBS Element." : "Total actual cost ranked by category."}
-              </p>
-            </div>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={categoryTrendData.categoryTotals}
-                  layout="vertical"
-                  margin={{ left: 20, right: 10 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgb(var(--color-line) / 0.3)" />
-                  <XAxis type="number" stroke="rgb(var(--color-muted) / 0.8)" fontSize={10} tickLine={false} tickFormatter={formatYAxis} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    stroke="rgb(var(--color-muted) / 0.8)"
-                    fontSize={10}
-                    tickLine={false}
-                    width={110}
-                    tickFormatter={(tick) => {
-                      if (!categoryTrendData.isWbsGrouped) return tick;
-                      const desc = wbsCodeToDescMap.get(tick);
-                      if (!desc) return tick;
-                      return desc.length > 18 ? `${desc.slice(0, 18)}...` : desc;
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={chartTooltipStyle}
-                    formatter={formatTooltipValue}
-                    labelFormatter={(label) => {
-                      if (!categoryTrendData.isWbsGrouped) return label;
-                      const desc = wbsCodeToDescMap.get(String(label));
-                      return desc ? `${label} - ${desc}` : label;
-                    }}
-                  />
-                  <Bar dataKey="value" name="Total Cost" radius={[0, 4, 4, 0]}>
-                    {categoryTrendData.categoryTotals.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={
-                          CATEGORY_COLORS[
-                            categoryTrendData.uniqueCategories.indexOf(entry.name) !== -1
-                              ? categoryTrendData.uniqueCategories.indexOf(entry.name) % CATEGORY_COLORS.length
-                              : index % CATEGORY_COLORS.length
-                          ]
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={formatTooltipValue} />
+                    <Legend verticalAlign="top" height={36} iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9 }} />
+                    {categoryTrendData.uniqueCategories.map((category, index) => (
+                      <Bar
+                        key={category}
+                        dataKey={category}
+                        stackId="a"
+                        fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                        name={
+                          categoryTrendData.isWbsGrouped
+                            ? (wbsCodeToDescMap.get(category) || category)
+                            : category
                         }
                       />
                     ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Right Chart: Ranked Cost Category Totals */}
+            <div className="space-y-3">
+              <div>
+                <h4 className="text-xs font-bold text-text">
+                  {categoryTrendData.isWbsGrouped ? "WBS Element Consumption Ranking" : "Cost Category Consumption Ranking"}
+                </h4>
+                <p className="text-[10px] text-muted">
+                  {categoryTrendData.isWbsGrouped ? "Total actual cost ranked by WBS Element." : "Total actual cost ranked by category."}
+                </p>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={categoryTrendData.categoryTotals}
+                    layout="vertical"
+                    margin={{ left: 20, right: 10 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgb(var(--color-line) / 0.3)" />
+                    <XAxis type="number" stroke="rgb(var(--color-muted) / 0.8)" fontSize={10} tickLine={false} tickFormatter={formatYAxis} />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      stroke="rgb(var(--color-muted) / 0.8)"
+                      fontSize={10}
+                      tickLine={false}
+                      width={110}
+                      tickFormatter={(tick) => {
+                        if (!categoryTrendData.isWbsGrouped) return tick;
+                        const desc = wbsCodeToDescMap.get(tick);
+                        if (!desc) return tick;
+                        return desc.length > 18 ? `${desc.slice(0, 18)}...` : desc;
+                      }}
+                    />
+                    <Tooltip
+                      contentStyle={chartTooltipStyle}
+                      formatter={formatTooltipValue}
+                      labelFormatter={(label) => {
+                        if (!categoryTrendData.isWbsGrouped) return label;
+                        const desc = wbsCodeToDescMap.get(String(label));
+                        return desc ? `${label} - ${desc}` : label;
+                      }}
+                    />
+                    <Bar dataKey="value" name="Total Cost" radius={[0, 4, 4, 0]}>
+                      {categoryTrendData.categoryTotals.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={
+                            CATEGORY_COLORS[
+                              categoryTrendData.uniqueCategories.indexOf(entry.name) !== -1
+                                ? categoryTrendData.uniqueCategories.indexOf(entry.name) % CATEGORY_COLORS.length
+                                : index % CATEGORY_COLORS.length
+                            ]
+                          }
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* 3c. Subcontractor Performance by PO – visible only in Subcontractor view */}
-      {costViewMode === "subcontractor" && poPerformanceData && (
+      {/* 3c. Subcontractor Performance by PO – visible only in Subcontractor view and when a single PO is not selected */}
+      {costViewMode === "subcontractor" && selectedPos.length !== 1 && poPerformanceData && (
         <div className="surface-card p-6 border border-line/45 bg-panel/30 shadow-card rounded-3xl print-card">
           {/* Header */}
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between border-b border-line/30 pb-4 mb-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-line/30 pb-4 mb-6">
             <div>
               <h3 className="text-base font-bold text-text flex items-center gap-2">
                 <Briefcase className="h-4 w-4 text-accent" />
@@ -1434,8 +1501,27 @@ export function TrendAnalysisPanel({
                 Actual cost breakdown and timeline by Purchasing Document (PO Number) from GR55.
               </p>
             </div>
-            {/* KPI badges */}
-            <div className="flex flex-wrap gap-2">
+            {/* Filter and KPI badges */}
+            <div className="flex flex-wrap items-center gap-3">
+              {poOptions.length > 1 && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted shrink-0">PO Number:</span>
+                  <div style={{ width: '260px', minWidth: '260px' }} className="shrink-0">
+                    <MultiWbsSelect
+                      selectedValues={selectedPos}
+                      onChange={(vals) => {
+                        setSelectedPos(vals);
+                        setSelectedPeriod(null);
+                      }}
+                      options={poOptions.filter(Boolean).map((po) => ({
+                        value: po,
+                        label: po,
+                      }))}
+                      placeholder="All POs"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="rounded-xl border border-accent/25 bg-accent/5 px-3 py-1.5 text-xs font-semibold text-accent flex items-center gap-1.5">
                 <span className="text-muted font-medium">Active POs:</span>
                 {poPerformanceData.uniquePOs.filter((p) => p !== "No PO").length}
@@ -1600,16 +1686,18 @@ export function TrendAnalysisPanel({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-line/30 pb-4">
           <div>
             <h3 className="text-base font-bold text-text">
-              {selectedPeriod ? `Contributing Postings for: ${selectedPeriod}` : "Transaction Drill-down"}
+              {selectedPeriod ? `Contributing Postings for: ${selectedPeriod}` : selectedPos.length > 0 ? `Postings for POs: ${selectedPos.join(', ')}` : "Transaction Drill-down"}
             </h3>
             <p className="text-xs text-muted mt-1">
               {selectedPeriod
                 ? `Detailed ledger entries and WBS breakdowns contributing to period ${selectedPeriod}.`
+                : selectedPos.length > 0
+                ? `Detailed ledger entries and WBS breakdowns for PO numbers: ${selectedPos.join(', ')}.`
                 : "Click any data point on the trend charts above to inspect specific postings."}
             </p>
           </div>
 
-          {selectedPeriod && (
+          {(selectedPeriod || selectedPos.length > 0) && (
             <div className="no-print relative">
               <input
                 type="text"
@@ -1626,7 +1714,7 @@ export function TrendAnalysisPanel({
           )}
         </div>
 
-        {selectedPeriod ? (
+        {selectedPeriod || selectedPos.length > 0 ? (
           <div className="mt-5 space-y-4">
             {/* Tab selection for Drill-down categories */}
             <div className="no-print flex border-b border-line/40">
@@ -1708,7 +1796,7 @@ export function TrendAnalysisPanel({
                       <tr key={row.id} className="hover:bg-panel2/35 transition">
                         <td className="py-2.5 px-3 font-mono">{row.posting_date}</td>
                         <td className="py-2.5 px-3 font-mono text-accent">{row.wbs_code}</td>
-                        <td className="py-2.5 px-3 truncate max-w-xs">{row.wbs_description}</td>
+                        <td className="py-2.5 px-3 truncate max-w-xs">{row.wbs_description || wbsCodeToDescMap.get(row.wbs_code) || "-"}</td>
                         <td className="py-2.5 px-3 font-mono">{row.cost_element}</td>
                         <td className="py-2.5 px-3">{row.cost_category}</td>
                         <td className="py-2.5 px-3 text-right font-mono text-text">
@@ -1716,10 +1804,26 @@ export function TrendAnalysisPanel({
                         </td>
                       </tr>
                     ))}
+                    {paginatedDrilldown.length > 0 && (
+                      <>
+                        <tr className="border-t border-line/60 bg-panel2/20 font-bold">
+                          <td colSpan={5} className="py-2 px-3 text-xs uppercase tracking-wider text-muted">Page Total ({paginatedDrilldown.length} items)</td>
+                          <td className="py-2 px-3 text-right font-mono text-text text-xs">
+                            {formatCurrency(paginatedDrilldown.reduce((sum: number, r: Gr55CostRow) => sum + Number(r.amount || 0), 0))}
+                          </td>
+                        </tr>
+                        <tr className="border-t-2 border-line bg-panel2/40 font-extrabold text-accent">
+                          <td colSpan={5} className="py-2 px-3 text-xs uppercase tracking-wider">Grand Total (All {filteredDrilldown.length} items)</td>
+                          <td className="py-2 px-3 text-right font-mono text-xs">
+                            {formatCurrency((filteredDrilldown as Gr55CostRow[]).reduce((sum: number, r: Gr55CostRow) => sum + Number(r.amount || 0), 0))}
+                          </td>
+                        </tr>
+                      </>
+                    )}
                     {!paginatedDrilldown.length && (
                       <tr>
                         <td colSpan={6} className="py-12 text-center text-muted">
-                          No SAP postings found in this period.
+                          No SAP postings found.
                         </td>
                       </tr>
                     )}
@@ -1768,7 +1872,7 @@ export function TrendAnalysisPanel({
                     {!paginatedDrilldown.length && (
                       <tr>
                         <td colSpan={7} className="py-12 text-center text-muted">
-                          No PM updates found in this period.
+                          No PM updates found.
                         </td>
                       </tr>
                     )}
@@ -1801,7 +1905,7 @@ export function TrendAnalysisPanel({
                     {!paginatedDrilldown.length && (
                       <tr>
                         <td colSpan={4} className="py-12 text-center text-muted">
-                          No WBS entries found in this period.
+                          No WBS entries found.
                         </td>
                       </tr>
                     )}
@@ -1830,7 +1934,7 @@ export function TrendAnalysisPanel({
                     {!paginatedDrilldown.length && (
                       <tr>
                         <td colSpan={2} className="py-12 text-center text-muted">
-                          No cost category groups found in this period.
+                          No cost category groups found.
                         </td>
                       </tr>
                     )}

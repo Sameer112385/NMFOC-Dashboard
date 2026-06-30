@@ -21,7 +21,7 @@ export function MultiWbsSelect({
   selectedValues,
   onChange,
   options,
-  placeholder = 'All WBS Elements',
+  placeholder = 'All Elements',
   className,
 }: MultiWbsSelectProps) {
   const [open, setOpen] = useState(false);
@@ -87,12 +87,14 @@ export function MultiWbsSelect({
 
   const selectedDisplayLabel = useMemo(() => {
     if (selectedValues.length === 0) return placeholder;
-    if (selectedValues.length === options.length) return 'All WBS Elements';
+    if (selectedValues.length === options.length) return placeholder.toLowerCase().includes('po') ? 'All POs' : 'All WBS Elements';
     if (selectedValues.length === 1) {
       const found = options.find((o) => o.value === selectedValues[0]);
       return found ? found.label : selectedValues[0];
     }
-    return `${selectedValues.length} WBS Selected`;
+    return placeholder.toLowerCase().includes('po') 
+      ? `${selectedValues.length} POs Selected`
+      : `${selectedValues.length} WBS Selected`;
   }, [selectedValues, options, placeholder]);
 
   return (
@@ -133,7 +135,7 @@ export function MultiWbsSelect({
                 ref={searchRef}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Type to search WBS..."
+                placeholder={placeholder.toLowerCase().includes('po') ? "Type to search PO..." : "Type to search WBS..."}
                 className="w-full bg-transparent text-xs text-text outline-none placeholder:text-muted/60"
               />
             </div>
@@ -156,7 +158,7 @@ export function MultiWbsSelect({
           </div>
 
           <ul
-            className="overflow-y-auto divide-y divide-line/35 py-1"
+            className="flex-1 min-h-0 overflow-y-auto divide-y divide-line/35 py-1"
             role="listbox"
             aria-multiselectable="true"
           >
@@ -180,9 +182,9 @@ export function MultiWbsSelect({
                       onChange={() => {}} // handled by li click
                       className="rounded border-line bg-panel2 text-accent focus:ring-accent shrink-0 h-3.5 w-3.5"
                     />
-                    <span className="truncate" title={`${option.value} - ${option.label}`}>
+                    <span className="truncate" title={option.value === option.label ? option.value : `${option.value} - ${option.label}`}>
                       <span className="font-mono text-accent/85 mr-1.5">{option.value}</span>
-                      <span className="text-muted">{option.label}</span>
+                      {option.value !== option.label && <span className="text-muted">{option.label}</span>}
                     </span>
                   </div>
                   {selected ? <Check className="h-3.5 w-3.5 shrink-0 text-accent" /> : null}

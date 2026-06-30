@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react';
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -62,7 +64,7 @@ export function RevenueVsSimulationChart({ data }: { data: { name: string; sap: 
     subtitle: 'Compare system revenue against the current management projection.',
     children: (
       <div className="h-full overflow-x-auto pb-2 scrollbar-thin">
-        <div style={{ width: chartWidth, minHeight: '100%' }}>
+        <div style={{ width: chartWidth, height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} barCategoryGap={18}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.3)" />
@@ -97,7 +99,7 @@ export function CostComparisonChart({ data }: { data: { name: string; sap: numbe
     subtitle: 'Spot variance between booked cost and management outlook.',
     children: (
       <div className="h-full overflow-x-auto pb-2 scrollbar-thin">
-        <div style={{ width: chartWidth, minHeight: '100%' }}>
+        <div style={{ width: chartWidth, height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.3)" />
@@ -127,8 +129,8 @@ export function CostComparisonChart({ data }: { data: { name: string; sap: numbe
 
 export function TopWbsChart({ data }: { data: { name: string; value: number }[] }) {
   return wrapChart({
-    title: 'Top WBS by Recognized Revenue',
-    subtitle: 'Highest contributing WBS lines by recognized value.',
+    title: 'Top Links by Recognized Revenue',
+    subtitle: 'Highest contributing WBS link names by recognized value.',
     children: (
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical">
@@ -151,7 +153,7 @@ export function ScrollableTopWbsChart({ data }: { data: { name: string; value: n
   const chartHeight = Math.max(360, data.length * 36);
 
   return wrapChart({
-    title: 'All WBS by Recognized Revenue',
+    title: 'All Links by Recognized Revenue',
     subtitle: 'Scrollable revenue ranking across the complete filtered set.',
     children: (
       <div className="h-full overflow-y-auto pr-2">
@@ -234,7 +236,7 @@ export function PocChart({ data }: { data: { name: string; value: number }[] }) 
     subtitle: 'Progress concentration across filtered work packages.',
     children: (
       <div className="h-full overflow-x-auto pb-2 scrollbar-thin">
-        <div style={{ width: chartWidth, minHeight: '100%' }}>
+        <div style={{ width: chartWidth, height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.3)" />
@@ -279,4 +281,98 @@ export function RiskChart({ data }: { data: { name: string; value: number }[] })
     ),
   });
 }
+
+export function RevenueTrendChart({ data }: { data: { period: string; recognizedRevenue: number; cumulativeRecognizedRevenue: number }[] }) {
+  return wrapChart({
+    title: 'Revenue Trend by Month',
+    subtitle: 'Historical monthly and cumulative recognized revenue since project start.',
+    className: 'md:col-span-2',
+    children: (
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data}>
+          <defs>
+            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+            </linearGradient>
+            <linearGradient id="colorCumulative" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgb(var(--color-line) / 0.3)" />
+          <XAxis 
+            dataKey="period" 
+            stroke="rgb(var(--color-muted) / 0.8)" 
+            fontSize={10} 
+            tickLine={false} 
+            axisLine={false} 
+          />
+          <YAxis 
+            stroke="rgb(var(--color-muted) / 0.8)" 
+            fontSize={10} 
+            tickLine={false} 
+            axisLine={false} 
+            tickFormatter={chartAxisTickFormatter} 
+          />
+          <Tooltip contentStyle={chartTooltipStyle} formatter={chartTooltipFormatter} />
+          <Legend verticalAlign="top" height={26} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+          <Area type="monotone" dataKey="recognizedRevenue" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" name="Monthly Revenue" />
+          <Area type="monotone" dataKey="cumulativeRecognizedRevenue" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorCumulative)" name="Cumulative Revenue" />
+        </AreaChart>
+      </ResponsiveContainer>
+    ),
+  });
+}
+
+export function CostBreakdownChart({ data }: { data: { name: string; value: number }[] }) {
+  const safeData = data.filter((item) => item.value > 0);
+  const totalVal = safeData.reduce((sum, item) => sum + item.value, 0);
+
+  return wrapChart({
+    title: 'Cost Breakdown by Category',
+    subtitle: 'Distribution of actual GR55 costs across key resource types.',
+    children: (
+      <ResponsiveContainer width="100%" height="100%">
+        {safeData.length > 0 ? (
+          <PieChart>
+            <Pie
+              data={safeData}
+              dataKey="value"
+              nameKey="name"
+              outerRadius={90}
+              innerRadius={50}
+              paddingAngle={3}
+              stroke="rgb(var(--color-panel))"
+              strokeWidth={2}
+            >
+              {safeData.map((entry, index) => (
+                <Cell key={entry.name} fill={palette[index % palette.length]} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={chartTooltipStyle}
+              formatter={(value: number, name: string) => {
+                const percent = totalVal > 0 ? (value / totalVal) * 100 : 0;
+                return [`${formatCompactCurrency(value)} (${formatPercent(percent)})`, name];
+              }}
+            />
+            <Legend
+              verticalAlign="bottom"
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: 10, paddingTop: 10 }}
+              formatter={(value) => <span className="text-xs text-text">{value}</span>}
+            />
+          </PieChart>
+        ) : (
+          <div className="flex h-full items-center justify-center text-xs text-muted">
+            No actual cost data available for breakdown.
+          </div>
+        )}
+      </ResponsiveContainer>
+    ),
+  });
+}
+
 

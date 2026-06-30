@@ -6,6 +6,7 @@ export type CurrentAppUser = {
   id: string;
   email: string;
   role: string;
+  fullName?: string | null;
   mode: 'demo' | 'supabase';
 };
 
@@ -18,6 +19,7 @@ export async function getCurrentAppUser(): Promise<CurrentAppUser | null> {
       id: 'demo-admin',
       email: 'admin@local',
       role: 'Admin',
+      fullName: 'Sameer Shaikh',
       mode: 'demo',
     };
   }
@@ -29,13 +31,17 @@ export async function getCurrentAppUser(): Promise<CurrentAppUser | null> {
     if (!user) return null;
 
     let role = String(user.user_metadata?.role ?? 'Viewer');
+    let fullName = String(user.user_metadata?.full_name ?? '');
     try {
       const { data: profile } = await supabase
         .from('users_profile')
-        .select('role')
+        .select('role, full_name')
         .eq('user_id', user.id)
         .maybeSingle();
       role = String(profile?.role ?? role ?? 'Viewer');
+      if (profile?.full_name) {
+        fullName = profile.full_name;
+      }
     } catch {
       // ignore profile lookup failures
     }
@@ -44,6 +50,7 @@ export async function getCurrentAppUser(): Promise<CurrentAppUser | null> {
       id: user.id,
       email: user.email ?? '',
       role,
+      fullName: fullName || user.email?.split('@')[0] || 'User',
       mode: 'supabase',
     };
   } catch {

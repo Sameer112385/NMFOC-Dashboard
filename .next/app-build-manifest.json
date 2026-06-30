@@ -46,30 +46,20 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(app)/projects/page.js"
     ],
-    "/(app)/upload-cn41/page": [
+    "/(app)/settings/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(app)/upload-cn41/page.js"
+      "static/chunks/app/(app)/settings/page.js"
     ],
-    "/api/financial-sources/latest/route": [
+    "/api/admin/users/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/financial-sources/latest/route.js"
-    ],
-    "/api/financial-sources/upload/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/financial-sources/upload/route.js"
+      "static/chunks/app/api/admin/users/route.js"
     ],
     "/(app)/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/(app)/dashboard/page.js"
-    ],
-    "/(app)/dashboard/[projectId]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(app)/dashboard/[projectId]/page.js"
     ]
   }
 }

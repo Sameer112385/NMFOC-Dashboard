@@ -23,6 +23,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const currentUser = await getCurrentAppUser();
-  return <AppShell userRole={currentUser?.role ?? null}>{children}</AppShell>;
+  return (
+    <AppShell userRole={currentUser?.role ?? null} userName={currentUser?.fullName ?? null}>
+      {children}
+    </AppShell>
+  );
 }
 

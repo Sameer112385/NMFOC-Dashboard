@@ -55,13 +55,13 @@ function getStatusTone(row: RevenueRow): 'default' | 'success' | 'warning' | 'da
 
 export function DashboardWbsFilter({
   rows,
-  selectedPo = '',
-  setSelectedPo = () => {},
+  selectedPos = [],
+  setSelectedPos = () => {},
   poOptions = [],
 }: {
   rows: RevenueRow[];
-  selectedPo?: string;
-  setSelectedPo?: (val: string) => void;
+  selectedPos?: string[];
+  setSelectedPos?: (val: string[]) => void;
   poOptions?: string[];
 }) {
   const [selectedWbs, setSelectedWbs] = useState<string[]>([]);
@@ -193,10 +193,10 @@ export function DashboardWbsFilter({
           {poOptions.length > 1 && (
             <label className="block">
               <span className="mb-2 block text-xs font-semibold text-muted">PO Number</span>
-              <DarkSelect
-                value={selectedPo}
-                onChange={setSelectedPo}
-                options={[{ value: '', label: 'All POs' }, ...poOptions.filter(Boolean).map((po) => ({ value: po, label: po }))]}
+              <MultiWbsSelect
+                selectedValues={selectedPos}
+                onChange={setSelectedPos}
+                options={poOptions.filter(Boolean).map((po) => ({ value: po, label: po }))}
                 placeholder="All POs"
               />
             </label>
@@ -215,7 +215,7 @@ export function DashboardWbsFilter({
           </label>
           <button
             type="button"
-            onClick={() => { setSelectedWbs([]); setDescriptionQuery(''); setStatusQuery(''); setPercentageQuery(''); setSelectedPo(''); }}
+            onClick={() => { setSelectedWbs([]); setDescriptionQuery(''); setStatusQuery(''); setPercentageQuery(''); setSelectedPos([]); }}
             className="rounded-lg border border-line bg-panel px-5 py-2.5 text-xs font-bold text-text hover:bg-panel2 hover:border-line/80 transition shadow-sm h-[38px] xl:h-auto"
           >
             Reset Filters
@@ -259,9 +259,9 @@ export function DashboardWbsFilter({
             <span>Export to Excel</span>
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-[1320px] w-full text-xs">
-            <thead className="bg-panel2/60 border-b border-line/35 text-left text-muted/80">
+        <div className="overflow-x-auto overflow-y-auto max-h-[580px] scrollbar-thin">
+          <table className="min-w-[1320px] w-full text-xs border-collapse">
+            <thead className="sticky top-0 z-10 bg-panel2/95 backdrop-blur-sm border-b border-line/45 text-left text-muted/80 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
               <tr>
                 <th className="px-4 py-3.5">{headerButton('WBS Code', 'wbs_code')}</th>
                 <th className="px-4 py-3.5">{headerButton('WBS Description', 'wbs_description')}</th>
@@ -296,6 +296,42 @@ export function DashboardWbsFilter({
                   </td>
                 </tr>
               ))}
+              {sortedRows.length > 0 && (() => {
+                const totalPlannedCost = sortedRows.reduce((sum, r) => sum + r.planned_cost, 0);
+                const totalActualCost = sortedRows.reduce((sum, r) => sum + r.actual_cost_to_date, 0);
+                const totalPlannedRevenue = sortedRows.reduce((sum, r) => sum + r.planned_revenue, 0);
+                const totalRecognizedRevenue = sortedRows.reduce((sum, r) => sum + r.recognized_revenue_to_date, 0);
+                const totalRemainingRevenue = sortedRows.reduce((sum, r) => sum + r.remaining_revenue, 0);
+                const totalRemainingCost = sortedRows.reduce((sum, r) => sum + r.remaining_cost, 0);
+                const totalForecastMargin = sortedRows.reduce((sum, r) => sum + r.forecast_margin, 0);
+                
+                // Overall POC = (Total Recognized Revenue / Total Planned Revenue) * 100
+                const overallPoc = totalPlannedRevenue > 0 ? (totalRecognizedRevenue / totalPlannedRevenue) * 100 : 0;
+                
+                // Overall Margin % = (Total Forecast Margin / Total Planned Revenue) * 100
+                const overallMargin = totalPlannedRevenue > 0 ? (totalForecastMargin / totalPlannedRevenue) * 100 : 0;
+                
+                return (
+                  <tr className="bg-panel2/50 font-bold border-t-2 border-line/65 text-text">
+                    <td className="px-4 py-3.5 text-accent font-extrabold text-[11px] uppercase tracking-wider">TOTAL</td>
+                    <td className="px-4 py-3.5 text-muted/95 truncate max-w-[280px]">Summary ({sortedRows.length} WBS items)</td>
+                    <td className="px-4 py-3.5 text-right font-mono">{formatCurrency(totalPlannedCost)}</td>
+                    <td className="px-4 py-3.5 text-right font-mono">{formatCurrency(totalActualCost)}</td>
+                    <td className="px-4 py-3.5 text-right font-mono">{formatCurrency(totalPlannedRevenue)}</td>
+                    <td className="px-4 py-3.5 text-right font-mono text-success">{formatCurrency(totalRecognizedRevenue)}</td>
+                    <td className="px-4 py-3.5 text-right font-mono">{formatCurrency(totalRemainingRevenue)}</td>
+                    <td className="px-4 py-3.5 text-right font-mono">{formatCurrency(totalRemainingCost)}</td>
+                    <td className="px-4 py-3.5 text-right font-mono text-success">{formatPercent(overallPoc)}</td>
+                    <td className="px-4 py-3.5 text-right font-mono">{formatCurrency(totalForecastMargin)}</td>
+                    <td className="px-4 py-3.5 text-right font-mono">{formatPercent(overallMargin)}</td>
+                    <td className="px-4 py-3.5 text-center">
+                      <Badge tone={totalActualCost > totalPlannedCost ? "danger" : "success"}>
+                        {totalActualCost > totalPlannedCost ? "Overrun" : "Stable"}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })()}
               {!sortedRows.length && (
                 <tr>
                   <td colSpan={12} className="py-12 text-center text-muted">No WBS records found.</td>
@@ -309,10 +345,10 @@ export function DashboardWbsFilter({
       {sortedRows.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2">
           <RevenueSplitChart recognized={totals.recognizedRevenue} remaining={Math.max(0, totals.remainingRevenue)} total={totals.plannedRevenue} />
-          <PocChart data={sortedRows.map((row) => ({ name: row.wbs_code, value: row.poc_percent }))} />
-          <RevenueVsSimulationChart data={sortedRows.map((row) => ({ name: row.wbs_code, sap: row.sap_earned_revenue ?? 0, simulated: row.recognized_revenue_to_date }))} />
-          <CostComparisonChart data={sortedRows.map((row) => ({ name: row.wbs_code, sap: row.sap_actual_cost ?? 0, simulated: row.actual_cost_to_date }))} />
-          <TopWbsChart data={sortedRows.slice().sort((a, b) => b.recognized_revenue_to_date - a.recognized_revenue_to_date).slice(0, 6).map((row) => ({ name: row.wbs_code, value: row.recognized_revenue_to_date }))} />
+          <PocChart data={sortedRows.map((row) => ({ name: row.wbs_description || row.wbs_code, value: row.poc_percent }))} />
+          <RevenueVsSimulationChart data={sortedRows.map((row) => ({ name: row.wbs_description || row.wbs_code, sap: row.sap_earned_revenue ?? 0, simulated: row.recognized_revenue_to_date }))} />
+          <CostComparisonChart data={sortedRows.map((row) => ({ name: row.wbs_description || row.wbs_code, sap: row.sap_actual_cost ?? 0, simulated: row.actual_cost_to_date }))} />
+          <TopWbsChart data={sortedRows.slice().sort((a, b) => b.recognized_revenue_to_date - a.recognized_revenue_to_date).slice(0, 6).map((row) => ({ name: row.wbs_description || row.wbs_code, value: row.recognized_revenue_to_date }))} />
         </div>
       )}
     </div>

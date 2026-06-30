@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'sap-cn41-sidebar-open';
 
-export function AppShell({ children, userRole }: { children: React.ReactNode; userRole?: string | null }) {
+export function AppShell({ children, userRole, userName }: { children: React.ReactNode; userRole?: string | null; userName?: string | null }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -31,7 +31,7 @@ export function AppShell({ children, userRole }: { children: React.ReactNode; us
 
   return (
     <div className="min-h-screen bg-bg text-text">
-      <Sidebar open={sidebarOpen} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} userRole={userRole} />
+      <Sidebar open={sidebarOpen} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} userRole={userRole} userName={userName} />
 
       {mobileOpen ? (
         <button

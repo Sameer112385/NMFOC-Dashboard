@@ -22,6 +22,32 @@ function normalizeCode(code: string) {
   return code.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 }
 
+function resolveWbsCode(revenueWbsId: string | null | undefined, costRows: RevenueWBS[]) {
+  const cleanId = String(revenueWbsId ?? '').trim();
+  if (!cleanId) return '';
+
+  const matchById = costRows.find((r) => r.id === cleanId);
+  if (matchById) return matchById.wbs_code;
+
+  const matchByCode = costRows.find((r) => r.wbs_code === cleanId);
+  if (matchByCode) return matchByCode.wbs_code;
+
+  const normId = normalizeCode(cleanId);
+  const matchByNorm = costRows.find((r) => normalizeCode(r.wbs_code) === normId);
+  if (matchByNorm) return matchByNorm.wbs_code;
+
+  return cleanId;
+}
+
+function findActiveWbsPrefix(normalizedCode: string, activeWbsCodes: string[]) {
+  for (const activeCode of activeWbsCodes) {
+    if (normalizedCode.startsWith(activeCode)) {
+      return activeCode;
+    }
+  }
+  return null;
+}
+
 // Normalize Cost Element helper
 function normalizeCostElement(code: string) {
   return code.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
@@ -63,9 +89,9 @@ export function buildTrendData(params: {
   costElementControl: ProjectCostElementControl[];
   filterWbsCodes?: string[]; // e.g. ["P.260840.01", "P.260840.02"]
   periodType: 'month' | 'quarter' | 'year';
-  selectedPo?: string;
+  selectedPos?: string[];
 }): TrendDataPoint[] {
-  const { costRows, gr55Rows, updates, wbsMaster, costElementControl, filterWbsCodes, periodType, selectedPo } = params;
+  const { costRows, gr55Rows, updates, wbsMaster, costElementControl, filterWbsCodes, periodType, selectedPos } = params;
 
   // Create lookup maps for WBS rules
   const wbsMasterMap = new Map(wbsMaster.map((w) => [normalizeCode(w.wbs_code), w]));
@@ -78,13 +104,13 @@ export function buildTrendData(params: {
     return targetNorms.some((targetNorm) => codeNorm.startsWith(targetNorm));
   };
 
-  // Determine WBS codes matching the selected PO (if any selected)
+  // Determine WBS codes matching the selected POs (if any selected)
   const wbsCodesForSelectedPo = (() => {
-    if (!selectedPo) return null;
+    if (!selectedPos || selectedPos.length === 0) return null;
     const codes = new Set<string>();
     gr55Rows.forEach((r) => {
       const pd = String(r.purchasing_document || "").trim();
-      if (pd === selectedPo) {
+      if (selectedPos.includes(pd)) {
         codes.add(normalizeCode(r.wbs_code));
       }
     });
@@ -122,6 +148,11 @@ export function buildTrendData(params: {
   const costWbsCodes = new Set(activeCostWbs.map((w) => normalizeCode(w.wbs_code)));
   const revWbsCodes = new Set(activeRevenueWbs.map((w) => normalizeCode(w.wbs_code)));
 
+  const allActiveWbsNorms = Array.from(new Set([
+    ...activeCostWbs.map((w) => normalizeCode(w.wbs_code)),
+    ...activeRevenueWbs.map((w) => normalizeCode(w.wbs_code)),
+  ])).sort((a, b) => b.length - a.length);
+
   // Filter raw SAP GR55 rows (apply WBS active/include_in_cost settings, Cost Element inclusion, and selected PO)
   let filteredGr55 = gr55Rows.filter((row) => {
     const code = normalizeCode(row.wbs_code);
@@ -132,16 +163,15 @@ export function buildTrendData(params: {
     
     if (isActive === false || includeInCost === false) return false;
     if (!isCostElementIncluded(row.cost_element ?? '', costElementControl)) return false;
-    if (selectedPo && String(row.purchasing_document || "").trim() !== selectedPo) return false;
+    if (selectedPos && selectedPos.length > 0 && !selectedPos.includes(String(row.purchasing_document || "").trim())) return false;
     
     // Check if matching filtered WBS codes
     return isMatchingFilter(row.wbs_code);
   });
 
   // Filter PM updates (apply WBS matching and PO filter)
-  const wbsIdToCodeMap = new Map(costRows.map((r) => [r.id || '', r.wbs_code]));
   let filteredUpdates = updates.filter((update) => {
-    const code = wbsIdToCodeMap.get(update.revenue_wbs_id) || update.revenue_wbs_id;
+    const code = resolveWbsCode(update.revenue_wbs_id, costRows);
     const norm = normalizeCode(code);
     const config = wbsMasterMap.get(norm);
     if (hasWbsMaster && !config) return false;
@@ -237,16 +267,21 @@ export function buildTrendData(params: {
     const periodGr55 = filteredGr55.filter((row) => getPeriodKey(row.posting_date) === p);
     periodGr55.forEach((row) => {
       const code = normalizeCode(row.wbs_code);
-      const existing = wbsActualCostMap.get(code) || 0;
-      wbsActualCostMap.set(code, existing + Number(row.amount || 0));
+      const activeWbsNorm = findActiveWbsPrefix(code, allActiveWbsNorms);
+      if (activeWbsNorm) {
+        const existing = wbsActualCostMap.get(activeWbsNorm) || 0;
+        wbsActualCostMap.set(activeWbsNorm, existing + Number(row.amount || 0));
+      }
     });
 
-    // Find simulated updates for this period
     const periodUpdates = filteredUpdates.filter((up) => getPeriodKey(up.update_date) === p);
     periodUpdates.forEach((up) => {
-      const code = normalizeCode(wbsIdToCodeMap.get(up.revenue_wbs_id) || up.revenue_wbs_id);
-      const existing = wbsPendingCostMap.get(code) || 0;
-      wbsPendingCostMap.set(code, existing + getEffectivePendingCost(up));
+      const code = normalizeCode(resolveWbsCode(up.revenue_wbs_id, costRows));
+      const activeWbsNorm = findActiveWbsPrefix(code, allActiveWbsNorms);
+      if (activeWbsNorm) {
+        const existing = wbsPendingCostMap.get(activeWbsNorm) || 0;
+        wbsPendingCostMap.set(activeWbsNorm, existing + getEffectivePendingCost(up));
+      }
     });
 
     // Compute cumulative cost at period end (across all active cost WBS elements)

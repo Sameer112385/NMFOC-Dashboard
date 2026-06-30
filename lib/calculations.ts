@@ -175,7 +175,7 @@ export function buildFinancialSummary(projectId: string, rows: RevenueWBS[]): Fi
     planned_cost: plannedCost,
     planned_revenue: plannedRevenue,
     actual_cost_to_date: actualCostToDate,
-    poc_percent: calculateCostToDatePoc(actualCostToDate, plannedCost),
+    poc_percent: clampPercent(plannedRevenue > 0 ? (recognizedRevenueToDate / plannedRevenue) * 100 : 0),
     recognized_revenue_to_date: recognizedRevenueToDate,
     remaining_revenue: remainingRevenue,
     remaining_cost: remainingCost,
